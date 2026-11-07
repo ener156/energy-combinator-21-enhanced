@@ -1,0 +1,15 @@
+{
+    "name":  "energy-combinator-21-enhanced",
+    "version":  "1.2.0",
+    "title":  "Energy Combinator 2.1 Enhanced",
+    "author":  "ener156 (fork of VinDust / dodo.the.last)",
+    "factorio_version":  "2.1",
+    "description":  "Independent, community-maintained Factorio 2.1 fork of Energy Combinator by VinDust, itself based on Power Combinator by dodo.the.last. Outputs current and estimated maximum electric network power consumption/production as circuit signals, with Tier 2 entity filtering. Includes compatibility, cleanup and signal handling fixes; global electric network handling is experimental. Not fully tested on space platforms or multiplayer.",
+    "dependencies":  [
+                         "base \u003e= 2.1",
+                         "! energy-combinator",
+                         "! energy-combinator-2",
+                         "! capacity-combinator",
+                         "! power-combinator"
+                     ]
+}

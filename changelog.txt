@@ -1,0 +1,39 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.2.0
+Date: 07.11.2026
+  Changes:
+    - Released Energy Combinator 2.1 Enhanced as an independent, community-maintained fork with its own mod ID.
+    - Updated compatibility for Factorio 2.1 while preserving the original in-game entity, recipe and signal prototype names.
+    - Added experimental support for global electric network statistics.
+    - Included explicit incompatibilities with the original Energy Combinator and other overlapping forks.
+  Bugfixes:
+    - Fixed the Factorio 2.1 read-only entity.minable error by using minable_flag instead.
+    - Corrected on_object_destroyed registration lookups and cleanup of hidden helper entities.
+    - Added guards for missing filter slots, missing signals, hidden entities and unknown entity prototypes.
+    - Corrected signed 32-bit signal bounds and handling of the last circuit filter slot.
+    - Improved tracking and cleanup of object destruction registrations.
+  Optimizations:
+    - Avoided unnecessary writes to lamp circuit conditions when their values have not changed.
+  Compatibility:
+    - Incorporates the Factorio 2.1 compatibility update also documented by n0t49a1n in the separate Energy Combinator 2.1 fork version 2.1.1 (24.10.2026).
+    - Incorporates the minable read-only error fix also documented by n0t49a1n in the separate fork version 2.1.2 (24.10.2026).
+    - Versions 2.1.1 and 2.1.2 were releases of that other fork, not earlier releases of Energy Combinator 2.1 Enhanced.
+  Info:
+    - Factorio 2.1 startup and 120-tick isolated runtime smoke tests passed. Full gameplay, multiplayer, save migration and space-platform tests remain outstanding.
+    - Original mod: Energy Combinator by VinDust; based on Power Combinator by dodo.the.last. License: The Unlicense.
+---------------------------------------------------------------------------------------------------
+Version: 1.1.1
+Date: 13.11.2024
+  Bugfixes:
+    - Removed red wire from the recipe (original Energy Combinator release by VinDust).
+---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 11.11.2024
+  Changes:
+    - Moved filter configuration from the combinator GUI to circuit signals (original Energy Combinator release by VinDust).
+    - Removed the combinator GUI (original Energy Combinator release by VinDust).
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 10.11.2024
+  Changes:
+    - Updated Energy Combinator for Factorio 2.0 (original release by VinDust).
