@@ -6,6 +6,12 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## Opening the combinator settings
+
+Hover your mouse pointer over a placed Energy Combinator and press **Ctrl + Shift + E**. The normal Factorio combinator window will open, so you can inspect its circuit signals and adjust the scaling factor. Normal clicks continue to behave as before.
+
+Change the shortcut under **Settings > Controls > Mods > Open Energy Combinator settings**. The mod automatically updates its output signals, so manual changes to those output slots will not persist.
+
 ## Compatibility and migration
 
 - Do not enable this fork alongside energy-combinator, energy-combinator-2, power-combinator or capacity-combinator. All of these conflict with this fork.
