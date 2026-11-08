@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.3
+Date: 08.11.2026
+  Bugfixes:
+    - Corrected the current consumption signal during power shortages so it shows actual consumption instead of inflated demand.
+---------------------------------------------------------------------------------------------------
 Version: 1.2.2
 Date: 08.11.2026
   Features:
