@@ -378,3 +378,13 @@ if not data.raw["item-subgroup"]["combinator-signals"] then data:extend{
         order = "c[combinator]-a[signal]-a[info]",
     },
 } end
+
+-- Configurable shortcut to inspect Energy Combinator settings.
+data:extend({
+    {
+        type = "custom-input",
+        name = "energy-combinator-open-settings",
+        key_sequence = "CONTROL + SHIFT + E",
+        consuming = "game-only",
+    },
+})
