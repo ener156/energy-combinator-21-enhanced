@@ -12,6 +12,22 @@ Hover your mouse pointer over a placed Energy Combinator and press **Ctrl + Shif
 
 Change the shortcut under **Settings > Controls > Mods > Open Energy Combinator settings**. The mod automatically updates its output signals, so manual changes to those output slots will not persist.
 
+## Scaling factor X
+
+The **Scaling factor X** signal in slot 1 sets the unit of all four reported power signals: `signal = watts / 10^X`. It does not change actual electric power. Circuit signals are integers. Current consumption and production are **rounded to the nearest whole signal point**; the estimated maximum capacity signals retain conservative upward rounding.
+
+| X | One signal point equals |
+|---|---|
+| 0 | 1 W |
+| 1 | 10 W |
+| 2 | 100 W |
+| 3 | 1 kW |
+| 4 | 10 kW |
+| 5 | 100 kW |
+| 6 | 1 MW |
+
+For example, at 20 kW the current power signal is 20 with X=3 or 200 with X=2. **X=3 is the default**, suitable for typical kW-scale networks. Lower X gives finer resolution; higher X keeps circuit signal values manageable in large networks. Update any combinator threshold values when changing X. The same explanation is available in the **Scaling factor X signal tooltip** and in **Tips & Tricks** in German, English and Russian.
+
 ## Compatibility and migration
 
 - Do not enable this fork alongside energy-combinator, energy-combinator-2, power-combinator or capacity-combinator. All of these conflict with this fork.
