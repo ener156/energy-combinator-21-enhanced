@@ -22,6 +22,8 @@ local MK1 = common.prototype_prefix .. "power-combinator"
 local MK2 = common.prototype_prefix .. "power-combinator-MK2"
 local MK = {[MK1]=true,[MK2]=true}
 local features = {filter = {[MK2]=true}}
+local GUI_SHORTCUT = "energy-combinator-open-settings"
+local gui_open_requests = {} -- one-tick permission for deliberate GUI opening
 
 --------------------------------------------------------------------------------
 
@@ -509,15 +511,29 @@ script.on_event(events.entity.removed, function (event)
     if unit_number then cleanup(unit_number) end
 end)
 
+-- Hover over a combinator and press the configurable shortcut to open its vanilla GUI.
+-- Normal clicks still use the original signal-driven behavior.
+script.on_event(GUI_SHORTCUT, function(event)
+    local player = game.get_player(event.player_index)
+    if not player then return end
+    local entity = player.selected
+    if not (is_valid(entity) and MK[entity.name]) then return end
+
+    gui_open_requests[event.player_index] = {unit_number = entity.unit_number, tick = event.tick}
+    player.opened = entity
+end)
+
 script.on_event(defines.events.on_gui_opened, function(event)
-    ---@type LuaPlayer
-    local player = game.players[event.player_index]
-    ---@type LuaEntity
+    local player = game.get_player(event.player_index)
     local entity = event.entity
-    if player == nil or entity == nil then return end
-    if MK[entity.name] then
-        player.opened = nil
+    if not player or not is_valid(entity) or not MK[entity.name] then return end
+
+    local request = gui_open_requests[event.player_index]
+    gui_open_requests[event.player_index] = nil
+    if request and request.unit_number == entity.unit_number and request.tick == event.tick then
+        return -- opened intentionally with the shortcut
     end
+    player.opened = nil
 end)
 
 for _,event in ipairs(events.entity.added) do
