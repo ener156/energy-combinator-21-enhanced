@@ -403,10 +403,26 @@ local function write(state, tick)
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
     local input, output, maxin, maxout, counts = collect_electric_statistics(state.net,state.sat, filters)
-    -- Current consumption must match energy actually consumed, not estimated unmet demand.
+    -- Keep existing cumulative inputs, building filters and capacity estimates authoritative.
     local input_diff = diff(input, state.input) * variance * scale
     local output_diff = diff(output, state.output) * variance * scale
     state.input, state.output, state.tick = input, output, tick
+    -- Use last-tick network flow only for MK1 on a normal local electric network.
+    -- flow_last_tick is energy transferred last tick (J); multiply by 60 for W.
+    -- Preserve MK2 entity filters, global networks and legacy maximum estimates.
+    if not features.filter[state.entity.name]
+        and is_valid(state.net) and is_valid(state.sat)
+        and not state.net.surface.has_global_electric_network
+        and state.net.electric_network_id ~= nil
+        and state.net.electric_network_id == state.sat.electric_network_id then
+        local sub = state.net.electric_network
+        local parent = sub and sub.valid and sub.parent_network
+        local transfer = parent and parent.valid and parent.flow_last_tick
+        local watts = transfer and transfer.total_transfer and transfer.total_transfer * 60
+        if watts and watts == watts and watts >= 0 and watts < math.huge then
+            input_diff, output_diff = watts * scale, watts * scale
+        end
+    end
     maxin, maxout = ceil(maxin * 60 * scale), ceil(maxout * 60 * scale)
     input_diff, output_diff = round(input_diff), round(output_diff)
     local enabled = is_int32(input_diff) and is_int32(output_diff) and is_int32(maxin) and is_int32(maxout)

@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.5
+Date: 08.11.2026
+  Improvements:
+    - Tier 1 combinators on ordinary local electric networks now read current consumption and production from the last electric network tick.
+    - Current power signals follow load changes more accurately, reducing lag after consumers are added or removed.
+  Compatibility:
+    - Estimated maximum values, Tier 2 entity filters and experimental global electric networks retain their existing calculations.
+    - Space-platform and multiplayer compatibility remain experimental.
+    - The configured output update interval is unchanged.
+---------------------------------------------------------------------------------------------------
 Version: 1.2.4
 Date: 08.11.2026
   Bugfixes:
