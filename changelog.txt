@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.1
+Date: 08.11.2026
+  Bugfixes:
+    - Preserve the configurable scaling exponent instead of resetting it to the default after each update.
+    - Reset stored filter-feedback counts when the circuit input becomes disconnected or empty.
+    - Handle entity-filter signals with no measured flow by outputting a zero count rather than a missing value.
+    - Point the Tips & Tricks simulation at this fork's actual mod ID.
+  Testing:
+    - Tested in an isolated Factorio 2.1 environment; the published 1.2.0 package remains unchanged until release.
+  Compatibility:
+    - Retains all existing entity and signal prototype names and the same mod ID as 1.2.0.
+---------------------------------------------------------------------------------------------------
 Version: 1.2.0
 Date: 07.11.2026
   Changes:
