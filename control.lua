@@ -34,7 +34,10 @@ local PRECISION_INDEX = defines.flow_precision_index["one_second"]   -- factorio
                      or defines.flow_precision_index["five_seconds"] -- factorio >= 1.1.25
 local PRECISION = 8
 local function floor(x) return math.floor(x * 10^PRECISION) * 10^-PRECISION end
-local function ceil(x) return math.ceil(floor(x)) end -- head → ceiling → table edge
+local function ceil(x) return math.ceil(floor(x)) end -- retain conservative ceiling for maximum capacities
+local function round(x) -- current circuit signals: nearest integer, symmetric for negative transients
+    return x >= 0 and math.floor(x + 0.5) or math.ceil(x - 0.5)
+end
 
 ---Merge two tables and sum values with same keys
 ---@param tb1 table<any,number>
@@ -405,7 +408,7 @@ local function write(state, tick)
     local output_diff = diff(output, state.output) * variance * scale
     state.input, state.output, state.tick = input, output, tick
     maxin, maxout = ceil(maxin * 60 * scale), ceil(maxout * 60 * scale)
-    input_diff, output_diff = ceil(input_diff),ceil(output_diff)
+    input_diff, output_diff = round(input_diff), round(output_diff)
     local enabled = is_int32(input_diff) and is_int32(output_diff) and is_int32(maxin) and is_int32(maxout)
     if not enabled then
         input_diff,output_diff,maxin,maxout = 0, 0, 0, 0 -- don't show anything
