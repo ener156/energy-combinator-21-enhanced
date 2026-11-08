@@ -1,11 +1,14 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.5
 Date: 08.11.2026
+  Bugfixes:
+    - Round estimated maximum production downward after applying scaling, so the circuit signal never overstates the estimated production capacity.
+    - Keep maximum consumption rounded upward and current measurements rounded to the nearest integer.
   Improvements:
     - Tier 1 combinators on ordinary local electric networks now read current consumption and production from the last electric network tick.
     - Current power signals follow load changes more accurately, reducing lag after consumers are added or removed.
   Compatibility:
-    - Estimated maximum values, Tier 2 entity filters and experimental global electric networks retain their existing calculations.
+    - The maximum-consumption estimate, Tier 2 entity filters and experimental global electric networks retain their existing calculations.
     - Space-platform and multiplayer compatibility remain experimental.
     - The configured output update interval is unchanged.
 ---------------------------------------------------------------------------------------------------
