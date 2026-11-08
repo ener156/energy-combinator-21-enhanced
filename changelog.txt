@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.4
+Date: 08.11.2026
+  Bugfixes:
+    - Current consumption and production signals now round to the nearest integer instead of always rounding up.
+    - Maximum consumption and production estimates keep their previous upward rounding.
+  Improvements:
+    - Explained scaling factor X with a 0–6 unit table, formula and example in signal tooltips and Tips & Tricks (DE/EN/RU).
+    - Renamed the scaling signal's display text for clarity; its prototype ID is unchanged.
+---------------------------------------------------------------------------------------------------
 Version: 1.2.3
 Date: 08.11.2026
   Bugfixes:
