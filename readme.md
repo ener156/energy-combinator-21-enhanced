@@ -4,7 +4,7 @@ Independent, community-maintained Factorio 2.1 fork of **Energy Combinator** by 
 
 This mod reports electric network power statistics through the circuit network. Tier 1 exposes current consumption and production and their estimated maximum values, with a selectable scaling exponent. Tier 2 adds circuit-controlled entity filtering. Existing in-game prototype names are retained for compatibility with established layouts, but the internal mod ID is different.
 
-Factorio 2.1 support and 14 code-level changes were validated with an isolated startup and 120-tick runtime smoke test on Factorio 2.1. This does not imply full functional, multiplayer, existing-save or space-platform testing.
+Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
 ## Compatibility and migration
 
@@ -21,3 +21,11 @@ Factorio 2.1 support and 14 code-level changes were validated with an isolated s
 - Factorio 2.1 Enhanced maintenance: ener156
 
 The source mod and its predecessor were released under The Unlicense (public domain); this derivative is also released under The Unlicense. See LICENSE.
+
+## Updating
+
+For existing 1.2.0 installations, upgrade to 1.2.1 using the same mod ID. The change does not rename prototype IDs. For installations coming from a different mod ID, follow the save-migration precautions above.
+
+## Historical documentation
+
+`power-combinator_readme.md` is retained as upstream reference material. Claims in that historical file (including multiplayer compatibility) do not constitute a validation of this fork.
