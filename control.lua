@@ -169,16 +169,14 @@ end
 ---@param satisfaction table<integer,number>
 ---@param filters string[] | nil
 local function calculate_values(statistics, satisfaction, filters)
-    local sat, input, output, maxin, maxout, count = 0, 0, 0, 0, 0, {}
+    local input, output, maxin, maxout, count = 0, 0, 0, 0, {}
     for electric_network_id, statistic in pairs(statistics) do
         if satisfaction[electric_network_id] then
-            sat = sat + satisfaction[electric_network_id]
              input, maxin , count = add( input, maxin , count, sum_stats(statistic, "input" , filters))
             output, maxout, count = add(output, maxout, count, sum_stats(statistic, "output", filters))
         end
     end
-    local f = sat == 0 and 0 or (1 / sat)
-    return f, input, output, maxin, maxout, count
+    return input, output, maxin, maxout, count
 end
 
 ---@param net LuaEntity
@@ -401,9 +399,10 @@ local function write(state, tick)
     local filters = get_filters(state)
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
-    local f, input, output, maxin, maxout, counts = collect_electric_statistics(state.net,state.sat, filters)
-    local  input_diff = (diff( input, state. input) * variance * f) * scale
-    local output_diff =  diff(output, state.output) * variance      * scale
+    local input, output, maxin, maxout, counts = collect_electric_statistics(state.net,state.sat, filters)
+    -- Current consumption must match energy actually consumed, not estimated unmet demand.
+    local input_diff = diff(input, state.input) * variance * scale
+    local output_diff = diff(output, state.output) * variance * scale
     state.input, state.output, state.tick = input, output, tick
     maxin, maxout = ceil(maxin * 60 * scale), ceil(maxout * 60 * scale)
     input_diff, output_diff = ceil(input_diff),ceil(output_diff)
