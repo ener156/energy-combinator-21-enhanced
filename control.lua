@@ -361,6 +361,7 @@ local function write_filters_count(state, counts)
         local filters_index = 6
         if signals == nil then
             for i = filters_index, signals_count, 1 do set_signal(control, i, nil) end
+            state.prev_outputs = {} -- reset feedback when all circuit inputs disappear
             return
         end
         local max_index = math.max(signals_count + 1, table_size(signals) + filters_index)
@@ -378,7 +379,7 @@ local function write_filters_count(state, counts)
                     name=signals[i].signal.name,
                     type=signals[i].signal.type or "item",
                     quality="normal", comparator="="}}
-                filter_signal.min = counts[signals[i].signal.name]
+                filter_signal.min = counts[signals[i].signal.name] or 0 -- unreported entities have no energy flow
             else
                 filter_signal = nil
             end
@@ -409,7 +410,7 @@ local function write(state, tick)
         input_diff,output_diff,maxin,maxout = 0, 0, 0, 0 -- don't show anything
     end
     toggle_light(state, enabled)
-    set_signal(control, DEFAULT_F.index, {value=F, min= DEFAULT_F.min})
+    set_signal(control, DEFAULT_F.index, {value=F, min=signal.min}) -- preserve user-defined scaling
     set_signal(control, 2, {value=I, min= input_diff})
     set_signal(control, 3, {value=O, min=output_diff})
     set_signal(control, 4, {value=C, min=maxin })
