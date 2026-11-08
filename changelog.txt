@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.2
+Date: 08.11.2026
+  Features:
+    - Hover over an Energy Combinator and press Ctrl + Shift + E to open its settings.
+    - The shortcut can be changed under Settings > Controls > Mods.
+---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 08.11.2026
   Bugfixes:
