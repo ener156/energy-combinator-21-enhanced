@@ -364,6 +364,7 @@ if not data.raw["tips-and-tricks-item-category"]["circuit-network"] then data:ex
 if not data.raw["virtual-signal"]["power-factor"] then data:extend{
     {   type = "virtual-signal",
         name = "power-factor",
+        localised_description = {"virtual-signal-description.power-factor"},
         order = "a[power]-z[factor]",
         subgroup = "combinator-signals",
         icon = common.graphics_path .. "power-factor.png",
