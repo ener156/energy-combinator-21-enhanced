@@ -335,7 +335,7 @@ data:extend{
             },
         },
         simulation = {
-            mods = {common.prototype_prefix .. "power-combinator"},
+            mods = {common.mod_name}, -- use the current fork mod ID for the simulation
             init_file = common.mod_root .. "scripts/simulation.lua",
             generate_map = false,
             checkboard = true,
