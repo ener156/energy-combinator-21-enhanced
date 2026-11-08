@@ -29,3 +29,16 @@ For existing 1.2.0 installations, upgrade to 1.2.1 using the same mod ID. The ch
 ## Historical documentation
 
 `power-combinator_readme.md` is retained as upstream reference material. Claims in that historical file (including multiplayer compatibility) do not constitute a validation of this fork.
+
+## Project history
+
+The entries below describe **other projects and releases**, not past releases of Energy Combinator 2.1 Enhanced:
+
+- **Power Combinator** by dodo.the.last: the original project on which Energy Combinator was based.
+- **Energy Combinator** by VinDust, version 1.0.0 (10 November 2024): updated for Factorio 2.0.
+- **Energy Combinator** by VinDust, version 1.1.0 (11 November 2024): filter controls changed to circuit signals; old combinator GUI removed.
+- **Energy Combinator** by VinDust, version 1.1.1 (13 November 2024): red wire removed from the recipe.
+- **Energy Combinator 2.1** by n0t49a1n, version 2.1.1 (24 October 2026): a separate Factorio 2.1 compatibility fork.
+- **Energy Combinator 2.1** by n0t49a1n, version 2.1.2 (24 October 2026): fixed the read-only `minable` error in that separate fork.
+
+See the [original Energy Combinator](https://mods.factorio.com/mod/energy-combinator), [Power Combinator](https://mods.factorio.com/mod/power-combinator), and [Energy Combinator 2.1](https://mods.factorio.com/mod/energy-combinator-2) for their own release histories.
