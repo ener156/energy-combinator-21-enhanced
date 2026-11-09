@@ -1,0 +1,44 @@
+name: Backfill historic Energy Combinator version tags
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/backfill-version-tags.yml'
+permissions:
+  contents: write
+jobs:
+  tag-history:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create immutable lightweight version tags on validated source commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          base="https://api.github.com/repos/${GITHUB_REPOSITORY}/git"
+          for entry in \
+            "v1.2.2:f393a27ff065762759595e88c083406edae730ff" \
+            "v1.2.3:46352db25ac636aa78f7097c6d39d7da2269ee94" \
+            "v1.2.4:0f62b089bd166a9e271bbea78b0a065b2e5946f7" \
+            "v1.2.5:f1e834fba28c5a10e6e705bb0abbf150e5002718"
+          do
+            tag="${entry%%:*}"
+            sha="${entry#*:}"
+            status="$(curl -sSL -o "/tmp/${tag}.json" -w '%{http_code}' \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              "${base}/ref/tags/${tag}")"
+            if [ "$status" = 200 ]; then
+              echo "TAG_EXISTS:${tag}"
+              continue
+            fi
+            [ "$status" = 404 ] || { echo "Unexpected status for ${tag}: ${status}"; exit 1; }
+            data="$(printf '{"ref":"refs/tags/%s","sha":"%s"}' "$tag" "$sha")"
+            curl -fsSL -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "$data" "${base}/refs" >/dev/null
+            echo "TAG_CREATED:${tag}:${sha}"
+          done
+          echo "VERSION_TAG_HISTORY=PASS"
