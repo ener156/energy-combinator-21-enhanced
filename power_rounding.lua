@@ -20,6 +20,16 @@ end
 -- Do not truncate to eight decimal places before calling ceil: for X=15,
 -- 1 MW is 1e-9 signal points, which would otherwise become zero.
 function M.ceil_maximum_consumption(value)
+    -- An exact prototype load (e.g. 1 MW) may become 100.00000000000001
+    -- signal points after converting from Joules/tick and applying scaling.
+    -- Snap only the numerical noise immediately ABOVE a positive whole number.
+    -- Do not suppress tiny positive demands below one point: X=15 must give 1.
+    local down = math.floor(value)
+    if down > 0 then
+        local noise = value - down
+        local tolerance = math.min(1e-7, math.abs(value) * 1e-13)
+        if noise <= tolerance then return down end
+    end
     return math.ceil(value)
 end
 

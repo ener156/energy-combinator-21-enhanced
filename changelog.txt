@@ -3,7 +3,9 @@ Version: 1.2.7
 Date: 10.11.2026
   Bugfixes:
     - Prevent the maximum-consumption signal from incorrectly becoming zero at very high scaling
-      factors: a positive demand is always rounded up (for example, 1 MW at X=15 now gives 1).
+      factors (for example, 1 MW at X=15 now gives 1).
+    - Normalize tiny floating-point overshoots at whole-number boundaries (e.g. 100.00000000000001
+      gives 100, not 101); genuine fractional demand still rounds upward.
     - The existing mathematically rounded current measurements and the conservative maximum-
       production rounding are unchanged.
   Compatibility:
