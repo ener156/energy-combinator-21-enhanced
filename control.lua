@@ -1,4 +1,5 @@
 local common = require "common"
+local power_rounding = require "power_rounding"
 
 local I,O,F,C,P = table.unpack{
     {type="virtual", quality="normal", comparator="=", name="power-consumption"},
@@ -423,7 +424,7 @@ local function write(state, tick)
             input_diff, output_diff = watts * scale, watts * scale
         end
     end
-    maxin, maxout = ceil(maxin * 60 * scale), math.floor(maxout * 60 * scale)
+    maxin, maxout = ceil(maxin * 60 * scale), power_rounding.floor_maximum_production(maxout * 60 * scale)
     input_diff, output_diff = round(input_diff), round(output_diff)
     local enabled = is_int32(input_diff) and is_int32(output_diff) and is_int32(maxin) and is_int32(maxout)
     if not enabled then

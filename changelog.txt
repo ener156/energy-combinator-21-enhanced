@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.6
+Date: 10.11.2026
+  Bugfixes:
+    - Avoid losing one full signal point of estimated maximum production at exact scaling boundaries
+      due to floating-point precision (e.g. 800 kW at factor X=5 now reports 8, not 7).
+    - Only normalize values indistinguishably close to an integer; genuinely fractional
+      maximum production values continue rounding down.
+  Compatibility:
+    - Current power measurements and maximum consumption rounding are unchanged.
+    - The user-selected scaling factor, default 5-tick interval and Tier 2 filters are unchanged.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.5
 Date: 08.11.2026
   Bugfixes:
