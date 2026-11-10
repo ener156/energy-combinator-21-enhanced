@@ -16,4 +16,11 @@ function M.floor_maximum_production(value)
     return down
 end
 
+-- A positive demand smaller than 1 signal point still requires 1 after scaling.
+-- Do not truncate to eight decimal places before calling ceil: for X=15,
+-- 1 MW is 1e-9 signal points, which would otherwise become zero.
+function M.ceil_maximum_consumption(value)
+    return math.ceil(value)
+end
+
 return M

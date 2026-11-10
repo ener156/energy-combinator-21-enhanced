@@ -33,9 +33,7 @@ local function is_int32(n) return n == n and n >= -INT32_MAX and n < INT32_MAX e
 
 local PRECISION_INDEX = defines.flow_precision_index["one_second"]   -- factorio <  1.1.25
                      or defines.flow_precision_index["five_seconds"] -- factorio >= 1.1.25
-local PRECISION = 8
-local function floor(x) return math.floor(x * 10^PRECISION) * 10^-PRECISION end
-local function ceil(x) return math.ceil(floor(x)) end -- conservative ceiling for maximum consumption
+-- Maximum-consumption rounding is handled without precision truncation in power_rounding.lua.
 local function round(x) -- current circuit signals: nearest integer, symmetric for negative transients
     return x >= 0 and math.floor(x + 0.5) or math.ceil(x - 0.5)
 end
@@ -424,7 +422,7 @@ local function write(state, tick)
             input_diff, output_diff = watts * scale, watts * scale
         end
     end
-    maxin, maxout = ceil(maxin * 60 * scale), power_rounding.floor_maximum_production(maxout * 60 * scale)
+    maxin, maxout = power_rounding.ceil_maximum_consumption(maxin * 60 * scale), power_rounding.floor_maximum_production(maxout * 60 * scale)
     input_diff, output_diff = round(input_diff), round(output_diff)
     local enabled = is_int32(input_diff) and is_int32(output_diff) and is_int32(maxin) and is_int32(maxout)
     if not enabled then

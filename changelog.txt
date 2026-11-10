@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.7
+Date: 10.11.2026
+  Bugfixes:
+    - Prevent the maximum-consumption signal from incorrectly becoming zero at very high scaling
+      factors: a positive demand is always rounded up (for example, 1 MW at X=15 now gives 1).
+    - The existing mathematically rounded current measurements and the conservative maximum-
+      production rounding are unchanged.
+  Compatibility:
+    - Retain all user-selected scaling values and the 5-tick default update interval.
+    - No changes to Tier 2 filters, electric-network statistics or entity prototype calculations.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.6
 Date: 10.11.2026
   Bugfixes:

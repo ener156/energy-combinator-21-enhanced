@@ -14,7 +14,7 @@ Change the shortcut under **Settings > Controls > Mods > Open Energy Combinator 
 
 ## Scaling factor X
 
-The **Scaling factor X** signal in slot 1 sets the unit of all four reported power signals: `signal = watts / 10^X`. It does not change actual electric power. Circuit signals are integers. Current consumption and production are **rounded to the nearest whole signal point**; estimated maximum consumption rounds upward, while estimated maximum production rounds downward to avoid overstating the capacity. Tiny floating-point errors at an exact integer boundary are normalized first (for example, 800 kW with X=5 gives 8, not 7).
+The **Scaling factor X** signal in slot 1 sets the unit of all four reported power signals: `signal = watts / 10^X`. It does not change actual electric power. Circuit signals are integers. Current consumption and production are **rounded to the nearest whole signal point**; estimated maximum consumption rounds upward even for tiny nonzero values at high X (e.g. 1 MW at X=15 gives 1), while estimated maximum production rounds downward to avoid overstating the capacity. Tiny floating-point errors at an exact integer boundary are normalized first (for example, 800 kW with X=5 gives 8, not 7).
 
 | X | One signal point equals |
 |---|---|
