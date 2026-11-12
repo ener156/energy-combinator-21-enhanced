@@ -33,4 +33,20 @@ function M.ceil_maximum_consumption(value)
     return math.ceil(value)
 end
 
+-- All four circuit output slots can independently select a rounding strategy.
+-- For maxima, the existing precision-aware helpers avoid floating-point noise
+-- turning mathematically exact integers into off-by-one signal counts.
+function M.round_signal(value, mode)
+    if mode == "up" then
+        if value < 0 then
+            return -M.floor_maximum_production(-value)
+        end
+        return M.ceil_maximum_consumption(value)
+    elseif mode == "down" then
+        return M.floor_maximum_production(value)
+    end
+    -- Previous default for measured current power (nearest, halves away from 0).
+    return value >= 0 and math.floor(value + 0.5) or math.ceil(value - 0.5)
+end
+
 return M
