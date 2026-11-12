@@ -6,6 +6,26 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## Dedicated GUI and ALT unit labels (1.2.9 development)
+
+Normal-click a placed Energy Combinator to open its own tabbed overview with
+physical power readings, circuit scaling, settings and diagnostics. The
+**Original combinator settings** button continues to open the native circuit
+interface. Hover and press **Ctrl + Shift + E** for the same native interface
+as in 1.2.8. Scaling still belongs exclusively to the first circuit signal
+slot; GUI changes write that exact slot rather than keeping a competing value.
+
+With Factorio's ALT-information mode enabled, the unit label next to the entity
+shows the currently selected resolution: X=0 → W, X=3 → kW, X=5 → 100 kW,
+X=6 → MW, X=9 → GW, X=15 → PW. This can be disabled globally per save
+under **Settings > Mod settings > Map > Show power unit in ALT mode**.
+The ALT label does not create or change circuit signals.
+
+The GUI displays physical power from the existing measurement calculations;
+its decimal formatting does not change circuit values or the selected rounding
+rules. The maximum values are capacity estimates, not necessarily the grid's
+total unsatisfied demand. GUI/ALT visual acceptance is still pending.
+
 ## Opening the combinator settings
 
 Hover your mouse pointer over a placed Energy Combinator and press **Ctrl + Shift + E**. The normal Factorio combinator window will open, so you can inspect its circuit signals and adjust the scaling factor. Normal clicks continue to behave as before.
