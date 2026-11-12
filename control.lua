@@ -34,8 +34,16 @@ local function is_int32(n) return n == n and n >= -INT32_MAX and n < INT32_MAX e
 local PRECISION_INDEX = defines.flow_precision_index["one_second"]   -- factorio <  1.1.25
                      or defines.flow_precision_index["five_seconds"] -- factorio >= 1.1.25
 -- Maximum-consumption rounding is handled without precision truncation in power_rounding.lua.
-local function round(x) -- current circuit signals: nearest integer, symmetric for negative transients
-    return x >= 0 and math.floor(x + 0.5) or math.ceil(x - 0.5)
+-- Runtime-global settings are sampled once per update tick, so changes apply
+-- immediately to every combinator without extra storage or migration events.
+local function rounding_modes()
+    local configured = settings.global
+    return {
+        current_consumption = configured["energy-combinator-round-current-consumption"].value,
+        current_production = configured["energy-combinator-round-current-production"].value,
+        maximum_consumption = configured["energy-combinator-round-maximum-consumption"].value,
+        maximum_production = configured["energy-combinator-round-maximum-production"].value,
+    }
 end
 
 ---Merge two tables and sum values with same keys
@@ -393,7 +401,7 @@ end
 ---@param state ECombState
 ---@param tick integer
 ---@return nil
-local function write(state, tick)
+local function write(state, tick, modes)
     connect_wires(state.sat, state.net)
     local control = state.control
     if not control.enabled then return toggle_light(state, false) end
@@ -422,8 +430,10 @@ local function write(state, tick)
             input_diff, output_diff = watts * scale, watts * scale
         end
     end
-    maxin, maxout = power_rounding.ceil_maximum_consumption(maxin * 60 * scale), power_rounding.floor_maximum_production(maxout * 60 * scale)
-    input_diff, output_diff = round(input_diff), round(output_diff)
+    maxin = power_rounding.round_signal(maxin * 60 * scale, modes.maximum_consumption)
+    maxout = power_rounding.round_signal(maxout * 60 * scale, modes.maximum_production)
+    input_diff = power_rounding.round_signal(input_diff, modes.current_consumption)
+    output_diff = power_rounding.round_signal(output_diff, modes.current_production)
     local enabled = is_int32(input_diff) and is_int32(output_diff) and is_int32(maxin) and is_int32(maxout)
     if not enabled then
         input_diff,output_diff,maxin,maxout = 0, 0, 0, 0 -- don't show anything
@@ -473,12 +483,13 @@ local function cleanup(entity)
 end
 
 local function update(tick)
+    local modes = rounding_modes()
     local invalid = {}
     for id, state in pairs(storage.state) do
         if not (is_valid(state.entity) and is_valid(state.net) and is_valid(state.sat)) then
             table.insert(invalid, id)
         elseif state.tick < tick then
-            write(state, tick)
+            write(state, tick, modes)
         end
     end
     for _, id in ipairs(invalid) do cleanup(id) end
