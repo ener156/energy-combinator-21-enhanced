@@ -1,4 +1,24 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.9
+Date: 12.11.2026
+  Features:
+    - Normal clicking an Energy Combinator opens a dedicated tabbed overview instead of
+      the native constant combinator interface.
+    - Overview shows four physical power readings and selected scaling unit; settings
+      offer the existing signal-factor editor and current map rounding rules.
+    - Diagnostics show electric-network sensor ID and stage-specific filter information.
+    - ALT mode shows the selected signal unit above each combinator (W, 10 W, 100 W,
+      kW, 10 kW, 100 kW, MW, GW and further SI prefixes).
+    - The ALT label can be disabled in map mod settings.
+  Compatibility:
+    - Existing Ctrl+Shift+E shortcut and the new GUI button still open the original
+      combinator interface for advanced circuit inspection.
+    - Scaling remains authoritative in circuit slot 1, with existing output signals,
+      map-wide rounding choices and 5-tick update default unchanged.
+    - No changes to entity prototypes, hidden electricity sensors or Tier 2 filters.
+    - Built as a candidate only, pending isolated Factorio GUI and ALT visual tests.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.8
 Date: 12.11.2026
   Features:
