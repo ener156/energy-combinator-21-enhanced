@@ -1,4 +1,19 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.8
+Date: 12.11.2026
+  Features:
+    - Add four independent map-wide rounding choices under Settings > Mod settings > Map:
+      current consumption, current production, maximum consumption and maximum production.
+    - Each signal supports nearest integer, round up or round down.
+    - Changes take effect on the next regular signal update without restarting Factorio.
+  Compatibility:
+    - Defaults preserve the previous behavior: current consumption/production round to
+      nearest, maximum consumption rounds up, maximum production rounds down.
+    - Keep precision-aware boundary corrections for the up/down modes and the high-X
+      maximum-consumption fix; no entity IDs, signal IDs or scaling settings are changed.
+    - Existing saves and Tier 2 filters retain their previous behavior by default.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.7
 Date: 10.11.2026
   Bugfixes:
