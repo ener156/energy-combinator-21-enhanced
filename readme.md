@@ -28,6 +28,24 @@ The **Scaling factor X** signal in slot 1 sets the unit of all four reported pow
 
 For example, at 20 kW the current power signal is 20 with X=3 or 200 with X=2. **X=3 is the default**, suitable for typical kW-scale networks. Lower X gives finer resolution; higher X keeps circuit signal values manageable in large networks. Update any combinator threshold values when changing X. The same explanation is available in the **Scaling factor X signal tooltip** and in **Tips & Tricks** in German, English and Russian.
 
+## Rounding settings (version 1.2.8 development)
+
+Open **Settings > Mod settings > Map** to configure the four circuit output signals
+independently: **Current consumption**, **Current production**,
+**Maximum consumption**, and **Maximum production**. Every signal offers
+**Nearest integer**, **Round up**, or **Round down**. Settings are shared by all
+combinators in the same save (including multiplayer) and take effect on the next
+scheduled output update; there is no restart or per-combinator override.
+
+The defaults match the previous version: nearest for both current power signals,
+up for maximum consumption, down for maximum production. Existing precision
+corrections still prevent tiny floating-point artifacts at whole-number boundaries
+from creating incorrect off-by-one values. With maximum consumption set to
+**Round up**, tiny positive power requirements also remain nonzero at high X.
+When selecting nearest or down instead, very small values may intentionally
+become zero. All circuit outputs remain **integers**, not decimal text.
+Actual electric power flow and the scaling factor X are unchanged.
+
 ## Compatibility and migration
 
 - Do not enable this fork alongside energy-combinator, energy-combinator-2, power-combinator or capacity-combinator. All of these conflict with this fork.
