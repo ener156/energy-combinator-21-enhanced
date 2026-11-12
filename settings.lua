@@ -20,6 +20,13 @@ data:extend({
         default_value = 5,
         order = "a",
     },
+    {
+        type = "bool-setting",
+        name = "energy-combinator-show-alt-units",
+        setting_type = "runtime-global",
+        default_value = true,
+        order = "c",
+    },
     rounding_setting("energy-combinator-round-current-consumption", "nearest", "b-a"),
     rounding_setting("energy-combinator-round-current-production", "nearest", "b-b"),
     rounding_setting("energy-combinator-round-maximum-consumption", "up", "b-c"),
