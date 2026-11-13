@@ -6,6 +6,23 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## Direct rounding controls and diagnostics (1.2.10 development)
+
+The GUI Settings tab now contains four drop-down selectors for the same existing
+**runtime-global map settings** that were introduced in 1.2.8. They change
+current consumption, current production, maximum consumption and maximum
+production independently. Factorio's Mod Settings menu still edits those same
+values; there is no duplicate authority. The ALT-unit label can also be
+enabled or disabled in the same tab. In multiplayer, only administrators can
+change these shared map settings from the custom GUI.
+
+The Diagnostics tab shows each hidden sensor's electric-network ID, whether
+the two sensors are connected to one network, which measurement path was used
+(direct local flow, statistics/estimate or experimental global statistics),
+and the number of active Tier 2 entity types selected by the circuit filters.
+ALT unit labels sit above the native circuit signal icons with a compact
+font size for longer unit names. All real circuit signal values are unchanged.
+
 ## Dedicated GUI and ALT unit labels (1.2.9 development)
 
 Normal-click a placed Energy Combinator to open its own tabbed overview with
