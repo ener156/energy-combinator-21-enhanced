@@ -6,6 +6,20 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## Factor-aware overview and circuit outputs (1.2.11 development)
+
+The Overview tab uses the selected **signal factor X** for its physical
+measurement display, rather than switching units automatically: 13 kW
+at X=6 is shown as **0.013 MW**, at X=3 as **13 kW**, and at X=2 as
+**130 × 100 W**. Values are display-only and retain their unrounded
+physical meaning. A native-style panel places the four power-signal
+icons and unrounded measurements alongside each real **integer output**
+read from the constant-combinator circuit slots (2–5).
+
+Scaling remains authoritative in circuit slot 1; the GUI does not cache
+independent output values or change energy usage. The native combinator
+GUI remains accessible as before.
+
 ## Direct rounding controls and diagnostics (1.2.10 development)
 
 The GUI Settings tab now contains four drop-down selectors for the same existing
