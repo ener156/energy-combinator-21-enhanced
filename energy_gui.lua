@@ -104,6 +104,7 @@ function M.open(player, state)
     overview.add{type="label", caption=caption_key("factor")}
     overview.add{type="label", name="ec_unit", caption="—", style="heading_2_label"}
     overview.add{type="label", caption=caption_key("overview-explanation")}
+    overview.add{type="label", name="ec_connection_warning", caption=""}
     -- Native-style shallow panel with a measured-input and circuit-output column.
     local panel = overview.add{type="frame", direction="vertical", style="inside_shallow_frame_with_padding"}
     local grid = panel.add{type="table", column_count=3}
@@ -150,6 +151,7 @@ function M.open(player, state)
     local diag = tabs.add{type="flow", name="ec_diagnostics", direction="vertical"}
     tabs.add_tab(diag_tab, diag)
     diag.add{type="label", name="ec_net_status", caption="—"}
+    diag.add{type="label", name="ec_circuit_status", caption="—"}
     diag.add{type="label", name="ec_net_id", caption="—"}
     diag.add{type="label", name="ec_sat_id", caption="—"}
     diag.add{type="label", name="ec_measurement_mode", caption="—"}
@@ -181,11 +183,18 @@ function M.refresh(player, state)
     local factor = get_factor(state)
     value(frame, "ec_unit", "X=" .. tostring(factor) .. "  ·  " .. units.factor_label(factor))
     local watts = state.last_watts or {}
-    for _, entry in ipairs(POWER_ROWS) do
-        value(frame, entry.measured, units.watts_at_factor(watts[entry.watts], factor))
-        value(frame, entry.output, circuit_value(state, entry.slot))
-    end
     local details = state.diagnostics or {}
+    local connected_to_circuit = details.circuit_connected ~= false
+    for _, entry in ipairs(POWER_ROWS) do
+        value(frame, entry.measured,
+            connected_to_circuit and units.watts_at_factor(watts[entry.watts], factor) or "—")
+        value(frame, entry.output,
+            connected_to_circuit and circuit_value(state, entry.slot) or "—")
+    end
+    value(frame, "ec_connection_warning",
+        connected_to_circuit and "" or caption_key("missing-circuit-wire"))
+    value(frame, "ec_circuit_status", connected_to_circuit and
+        caption_key("circuit-connected") or caption_key("circuit-disconnected"))
     local connected = details.connected == true
     value(frame, "ec_net_status", connected and caption_key("network-connected") or caption_key("network-unavailable"))
     value(frame, "ec_net_id", {"energy-combinator-gui.network-id", tostring(details.network_id or "—")})
