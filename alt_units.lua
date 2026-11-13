@@ -4,6 +4,14 @@ local units = require "power_units"
 local M = {}
 local SETTING = "energy-combinator-show-alt-units"
 
+-- Keep long labels compact when combinators are placed side by side.
+local function text_scale(label)
+    if #label >= 8 then return 0.53 end
+    if #label >= 6 then return 0.61 end
+    if #label >= 5 then return 0.67 end
+    return 0.75
+end
+
 local function label_map()
     storage.energy_alt_labels = storage.energy_alt_labels or {}
     return storage.energy_alt_labels
@@ -34,17 +42,21 @@ function M.sync(state, factor)
     local object = record and rendering.get_object_by_id(record.id)
     if object then
         if record.factor ~= factor then
-            object.text = units.factor_label(factor)
+            local label = units.factor_label(factor)
+            object.text = label
+            object.scale = text_scale(label)
             record.factor = factor
         end
         return
     end
+    local label = units.factor_label(factor)
     local created = rendering.draw_text{
-        text = units.factor_label(factor),
+        text = label,
         surface = entity.surface,
-        target = {type="entity", entity=entity, offset={0, -0.75}},
+        -- Above the native circuit icons instead of on top of the signal values.
+        target = {type="entity", entity=entity, offset={0, -1.15}},
         color = {r=1, g=0.93, b=0.64, a=1},
-        scale = 0.75,
+        scale = text_scale(label),
         alignment = "center",
         vertical_alignment = "bottom",
         only_in_alt_mode = true,
