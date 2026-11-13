@@ -12,6 +12,18 @@ local ROUNDING = {
 }
 local MODES = {"nearest", "up", "down"}
 local ALT_SETTING = "energy-combinator-show-alt-units"
+-- The output column reads the existing constant-combinator slots; it is not a
+-- second cache or signal writer. Physical measurements stay in state.last_watts.
+local POWER_ROWS = {
+    {key="current-consumption", watts="current_consumption", slot=2,
+     signal="power-consumption", measured="ec_current_cons", output="ec_signal_cons"},
+    {key="current-production", watts="current_production", slot=3,
+     signal="power-production", measured="ec_current_prod", output="ec_signal_prod"},
+    {key="maximum-consumption", watts="maximum_consumption", slot=4,
+     signal="power-max-consumption", measured="ec_max_cons", output="ec_signal_max_cons"},
+    {key="maximum-production", watts="maximum_production", slot=5,
+     signal="power-max-production", measured="ec_max_prod", output="ec_signal_max_prod"},
+}
 
 local function mode_index(value)
     for index, mode in ipairs(MODES) do
@@ -46,9 +58,21 @@ local function caption_key(key)
     return {"energy-combinator-gui." .. key}
 end
 
-local function row(table_gui, name, value_name)
-    table_gui.add{type="label", caption=caption_key(name)}
-    table_gui.add{type="label", name=value_name, caption="—"}
+local function row(table_gui, entry)
+    table_gui.add{
+        type="label",
+        caption={"", "[virtual-signal=" .. entry.signal .. "] ", caption_key(entry.key)},
+    }
+    table_gui.add{type="label", name=entry.measured, caption="—"}
+    table_gui.add{type="label", name=entry.output, caption="—"}
+end
+
+local function circuit_value(state, index)
+    if not state.control or not state.control.valid then return "—" end
+    if state.control.sections_count == 0 then return "—" end
+    local filter = state.control.sections[1].get_slot(index)
+    if not filter or not filter.value then return "—" end
+    return tostring(filter.min or 0)
 end
 
 function M.close(player)
@@ -67,7 +91,7 @@ function M.open(player, state)
         caption=caption_key("title"),
     }
     frame.auto_center = true
-    frame.style.minimal_width = 510
+    frame.style.minimal_width = 620
     local header = frame.add{type="flow", direction="horizontal"}
     header.add{type="label", caption=entity.name:find("MK2", 1, true) and caption_key("mk2") or caption_key("mk1")}
     header.add{type="empty-widget", style="draggable_space"}.style.horizontally_stretchable = true
@@ -79,13 +103,19 @@ function M.open(player, state)
     tabs.add_tab(overview_tab, overview)
     overview.add{type="label", caption=caption_key("factor")}
     overview.add{type="label", name="ec_unit", caption="—", style="heading_2_label"}
-    local grid = overview.add{type="table", column_count=2}
-    grid.style.horizontal_spacing = 16
-    grid.style.vertical_spacing = 8
-    row(grid, "current-consumption", "ec_current_cons")
-    row(grid, "current-production", "ec_current_prod")
-    row(grid, "maximum-consumption", "ec_max_cons")
-    row(grid, "maximum-production", "ec_max_prod")
+    overview.add{type="label", caption=caption_key("overview-explanation")}
+    -- Native-style shallow panel with a measured-input and circuit-output column.
+    local panel = overview.add{type="frame", direction="vertical", style="inside_shallow_frame_with_padding"}
+    local grid = panel.add{type="table", column_count=3}
+    grid.style.horizontal_spacing = 22
+    grid.style.vertical_spacing = 11
+    grid.add{type="label", caption=caption_key("power-signal")}
+    grid.add{type="label", caption=caption_key("power-measured")}
+    grid.add{type="label", caption=caption_key("power-output")}
+    for _, entry in ipairs(POWER_ROWS) do
+        row(grid, entry)
+    end
+    overview.add{type="label", caption=caption_key("rounding-hint")}
 
     local settings_tab = tabs.add{type="tab", caption=caption_key("settings")}
     local setting_flow = tabs.add{type="flow", name="ec_settings", direction="vertical"}
@@ -151,10 +181,10 @@ function M.refresh(player, state)
     local factor = get_factor(state)
     value(frame, "ec_unit", "X=" .. tostring(factor) .. "  ·  " .. units.factor_label(factor))
     local watts = state.last_watts or {}
-    value(frame, "ec_current_cons", units.watts_text(watts.current_consumption))
-    value(frame, "ec_current_prod", units.watts_text(watts.current_production))
-    value(frame, "ec_max_cons", units.watts_text(watts.maximum_consumption))
-    value(frame, "ec_max_prod", units.watts_text(watts.maximum_production))
+    for _, entry in ipairs(POWER_ROWS) do
+        value(frame, entry.measured, units.watts_at_factor(watts[entry.watts], factor))
+        value(frame, entry.output, circuit_value(state, entry.slot))
+    end
     local details = state.diagnostics or {}
     local connected = details.connected == true
     value(frame, "ec_net_status", connected and caption_key("network-connected") or caption_key("network-unavailable"))
