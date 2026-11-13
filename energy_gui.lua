@@ -3,6 +3,23 @@
 local units = require "power_units"
 local M = {}
 local ROOT = "ec_enhanced_gui"
+-- Map settings stay authoritative; dropdowns are just editors for those settings.
+local ROUNDING = {
+    {key="energy-combinator-round-current-consumption", gui="ec_round_current_cons"},
+    {key="energy-combinator-round-current-production", gui="ec_round_current_prod"},
+    {key="energy-combinator-round-maximum-consumption", gui="ec_round_max_cons"},
+    {key="energy-combinator-round-maximum-production", gui="ec_round_max_prod"},
+}
+local MODES = {"nearest", "up", "down"}
+local ALT_SETTING = "energy-combinator-show-alt-units"
+
+local function mode_index(value)
+    for index, mode in ipairs(MODES) do
+        if mode == value then return index end
+    end
+    return 1
+end
+
 
 local function gui_context()
     storage.energy_gui_context = storage.energy_gui_context or {}
@@ -50,7 +67,7 @@ function M.open(player, state)
         caption=caption_key("title"),
     }
     frame.auto_center = true
-    frame.style.minimal_width = 390
+    frame.style.minimal_width = 510
     local header = frame.add{type="flow", direction="horizontal"}
     header.add{type="label", caption=entity.name:find("MK2", 1, true) and caption_key("mk2") or caption_key("mk1")}
     header.add{type="empty-widget", style="draggable_space"}.style.horizontally_stretchable = true
@@ -78,16 +95,36 @@ function M.open(player, state)
     change.add{type="textfield", name="ec_factor_input", text=tostring(get_factor(state)),
                numeric=true, allow_negative=true}
     change.add{type="button", name="ec_apply_factor", caption=caption_key("apply-factor"), style="confirm_button"}
-    setting_flow.add{type="label", caption=caption_key("rounding-info")}
-    setting_flow.add{type="label", name="ec_rounding_status", caption="—"}
-    setting_flow.add{type="label", caption=caption_key("alt-info")}
+    setting_flow.add{type="label", caption=caption_key("rounding-mapwide")}
+    local rounding_table = setting_flow.add{type="table", column_count=2}
+    rounding_table.style.horizontal_spacing = 14
+    rounding_table.style.vertical_spacing = 8
+    for _, item in ipairs(ROUNDING) do
+        rounding_table.add{type="label", caption={"mod-setting-name." .. item.key}}
+        local choices = {}
+        for _, mode in ipairs(MODES) do
+            choices[#choices + 1] = {"string-mod-setting." .. item.key .. "-" .. mode}
+        end
+        local dropdown = rounding_table.add{
+            type="drop-down", name=item.gui, items=choices,
+            selected_index=mode_index(settings.global[item.key].value),
+        }
+        dropdown.style.minimal_width = 190
+    end
+    setting_flow.add{
+        type="checkbox", name="ec_alt_checkbox", caption=caption_key("alt-checkbox"),
+        state=settings.global[ALT_SETTING].value,
+    }
 
     local diag_tab = tabs.add{type="tab", caption=caption_key("diagnostics")}
     local diag = tabs.add{type="flow", name="ec_diagnostics", direction="vertical"}
     tabs.add_tab(diag_tab, diag)
     diag.add{type="label", name="ec_net_status", caption="—"}
     diag.add{type="label", name="ec_net_id", caption="—"}
+    diag.add{type="label", name="ec_sat_id", caption="—"}
+    diag.add{type="label", name="ec_measurement_mode", caption="—"}
     diag.add{type="label", name="ec_filter_status", caption="—"}
+    diag.add{type="label", name="ec_combinator_status", caption="—"}
 
     local footer = frame.add{type="flow", direction="horizontal"}
     footer.add{type="button", name="ec_open_native", caption=caption_key("native")}
@@ -118,16 +155,28 @@ function M.refresh(player, state)
     value(frame, "ec_current_prod", units.watts_text(watts.current_production))
     value(frame, "ec_max_cons", units.watts_text(watts.maximum_consumption))
     value(frame, "ec_max_prod", units.watts_text(watts.maximum_production))
-    value(frame, "ec_net_status", state.net and state.net.valid and caption_key("network-connected") or caption_key("network-unavailable"))
-    value(frame, "ec_net_id", "ID: " .. tostring(state.net and state.net.valid and state.net.electric_network_id or "—"))
-    value(frame, "ec_filter_status", state.entity.name:find("MK2", 1, true) and caption_key("filter-mk2") or caption_key("filter-mk1"))
-    local labels = {
-        settings.global["energy-combinator-round-current-consumption"].value,
-        settings.global["energy-combinator-round-current-production"].value,
-        settings.global["energy-combinator-round-maximum-consumption"].value,
-        settings.global["energy-combinator-round-maximum-production"].value,
-    }
-    value(frame, "ec_rounding_status", table.concat(labels, " / "))
+    local details = state.diagnostics or {}
+    local connected = details.connected == true
+    value(frame, "ec_net_status", connected and caption_key("network-connected") or caption_key("network-unavailable"))
+    value(frame, "ec_net_id", {"energy-combinator-gui.network-id", tostring(details.network_id or "—")})
+    value(frame, "ec_sat_id", {"energy-combinator-gui.satisfaction-id", tostring(details.satisfaction_id or "—")})
+    local method = details.method or "unknown"
+    value(frame, "ec_measurement_mode", {"energy-combinator-gui.measurement-mode", caption_key("method-" .. method)})
+    if details.is_mk2 then
+        value(frame, "ec_filter_status", {"energy-combinator-gui.filter-count", details.filter_count or 0})
+    else
+        value(frame, "ec_filter_status", caption_key("filter-mk1"))
+    end
+    value(frame, "ec_combinator_status", details.enabled == false and caption_key("combinator-disabled") or caption_key("combinator-enabled"))
+    for _, item in ipairs(ROUNDING) do
+        local dropdown = find(frame, item.gui)
+        if dropdown then
+            local selected = mode_index(settings.global[item.key].value)
+            if dropdown.selected_index ~= selected then dropdown.selected_index = selected end
+        end
+    end
+    local checkbox = find(frame, "ec_alt_checkbox")
+    if checkbox then checkbox.state = settings.global[ALT_SETTING].value end
 end
 
 function M.refresh_open_players(states)
@@ -167,6 +216,49 @@ function M.handle_click(event, states, apply_factor, open_native)
         else
             player.print(caption_key("factor-invalid"))
         end
+    end
+end
+
+-- Factorio permits mods to update their own runtime-global settings.
+-- All combinators use the same values on the next measurement tick.
+function M.handle_selection(event, states)
+    local element = event.element
+    if not element or not element.valid then return end
+    local player = game.get_player(event.player_index)
+    local frame = player and player.gui.screen[ROOT]
+    local id = player and gui_context()[player.index]
+    if not frame or not frame.valid or not states[id] then return end
+    for _, item in ipairs(ROUNDING) do
+        if element.name == item.gui and find(frame, item.gui) == element then
+            if game.is_multiplayer() and not player.admin then
+                player.print(caption_key("requires-admin"))
+                M.refresh(player, states[id])
+                return
+            end
+            local mode = MODES[element.selected_index]
+            if mode and settings.global[item.key].value ~= mode then
+                settings.global[item.key] = {value=mode}
+            end
+            return
+        end
+    end
+end
+
+function M.handle_checked(event, states)
+    local element = event.element
+    if not element or not element.valid or element.name ~= "ec_alt_checkbox" then return end
+    local player = game.get_player(event.player_index)
+    local frame = player and player.gui.screen[ROOT]
+    local id = player and gui_context()[player.index]
+    if not frame or not frame.valid or not states[id] then return end
+    if find(frame, "ec_alt_checkbox") ~= element then return end
+    if game.is_multiplayer() and not player.admin then
+        player.print(caption_key("requires-admin"))
+        M.refresh(player, states[id])
+        return
+    end
+    if settings.global[ALT_SETTING].value ~= element.state then
+        settings.global[ALT_SETTING] = {value=element.state}
     end
 end
 
