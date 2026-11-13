@@ -1,20 +1,4 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.2.12
-Date: 13.11.2026
-  Bugfixes:
-    - Detect a missing physical red/green signal cable on the Energy Combinator
-      using the actual Factorio 2.1 wire connectors, not internal sensor wires.
-    - When unwired, stop sending current/max power signals, show a missing cable
-      warning in the overview and a connection status in diagnostics.
-    - Reset the cumulative measurement baseline while disconnected to prevent
-      a spike when the cable is reattached; keep the user's scaling factor X.
-    - Update DE/EN/RU texts and keep selected-unit ALT label unchanged.
-  Compatibility:
-    - Works with either red or green wire to a real connected entity (such as a pole).
-    - No changed entity/signal prototypes, rounding rules or network-sensor placement.
-    - Development candidate; runtime cable disconnect/reconnect acceptance required.
----------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------
 Version: 1.2.11
 Date: 13.11.2026
   Features:
