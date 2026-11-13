@@ -406,10 +406,28 @@ end
 local function write(state, tick, modes)
     connect_wires(state.sat, state.net)
     local control = state.control
-    if not control.enabled then return toggle_light(state, false) end
+    local net_id = is_valid(state.net) and state.net.electric_network_id or nil
+    local satisfaction_id = is_valid(state.sat) and state.sat.electric_network_id or nil
+    local is_global = is_valid(state.net) and state.net.surface.has_global_electric_network
+    local details = {
+        network_id = net_id,
+        satisfaction_id = satisfaction_id,
+        connected = net_id ~= nil and satisfaction_id ~= nil and
+            (net_id == satisfaction_id or is_global),
+        is_mk2 = features.filter[state.entity.name] == true,
+        method = is_global and "global" or "statistics",
+        enabled = control.enabled,
+        filter_count = 0,
+    }
+    state.diagnostics = details
+    if not control.enabled then
+        details.method = "disabled"
+        return toggle_light(state, false)
+    end
     local signal = default_signal(control, DEFAULT_F)
     alt_units.sync(state, signal.min)
     local filters = get_filters(state)
+    details.filter_count = filters and #filters or 0
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
     local input, output, maxin, maxout, counts = collect_electric_statistics(state.net,state.sat, filters)
@@ -431,6 +449,7 @@ local function write(state, tick, modes)
         local watts = transfer and transfer.total_transfer and transfer.total_transfer * 60
         if watts and watts == watts and watts >= 0 and watts < math.huge then
             input_diff, output_diff = watts * scale, watts * scale
+            details.method = "direct"
         end
     end
     -- A display-only snapshot of the measured physical power, before any chosen
@@ -601,6 +620,12 @@ end
 script.on_event(defines.events.on_gui_click, function(event)
     energy_gui.handle_click(event, storage.state, apply_gui_factor, open_native_gui)
 end)
+script.on_event(defines.events.on_gui_selection_state_changed, function(event)
+    energy_gui.handle_selection(event, storage.state)
+end)
+script.on_event(defines.events.on_gui_checked_state_changed, function(event)
+    energy_gui.handle_checked(event, storage.state)
+end)
 script.on_event(defines.events.on_gui_closed, energy_gui.on_closed)
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     if event.setting == "energy-combinator-show-alt-units" then
@@ -608,6 +633,10 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
             local slot = get_signal(state.control, DEFAULT_F.index)
             return slot and slot.min or 3
         end)
+    end
+    if event.setting and (event.setting:find("energy-combinator-round-", 1, true) == 1
+          or event.setting == "energy-combinator-show-alt-units") then
+        energy_gui.refresh_open_players(storage.state)
     end
 end)
 
