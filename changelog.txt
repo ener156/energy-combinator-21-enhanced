@@ -1,4 +1,22 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.10
+Date: 13.11.2026
+  Features:
+    - Edit each of the four circuit rounding modes directly in the Energy Combinator
+      Settings tab. The values remain shared by the map and with normal Mod Settings.
+    - Show a map-wide ALT-unit toggle beside the rounding selectors.
+    - Add the electric-network and satisfaction-sensor IDs, measurement source,
+      estimated Tier 2 filter count and enabled state to the Diagnostics tab.
+    - Keep ALT unit labels above native circuit icons and scale longer units down
+      to reduce overlap with nearby combinators.
+  Compatibility:
+    - Preserve existing circuit-slot factor X, global rounding defaults,
+      entity prototypes, signal names, stored sensors and original native GUI.
+    - In multiplayer, only admins can change the shared rounding and ALT settings
+      from the new GUI; other players can inspect the settings.
+    - Development candidate: test on dedicated Factorio 2.1 runner before installation.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.9
 Date: 12.11.2026
   Features:
