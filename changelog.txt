@@ -1,4 +1,19 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.11
+Date: 13.11.2026
+  Features:
+    - The Overview tab now follows the selected scaling factor X instead of automatically
+      switching to W/kW/MW by magnitude. X=6 shows 0.013 MW for 13 kW; X=2 shows
+      130 × 100 W for the same physical power.
+    - A Factorio-native-style signal panel displays each unrounded measurement beside
+      its actual rounded integer circuit output, using the four existing signal icons.
+    - Clarify the difference between physical measurements and circuit values.
+  Compatibility:
+    - GUI reads output slots 2-5 directly; control.lua remains the only signal writer.
+    - No changes to measurement, rounding, ALT labels, wire links or runtime settings.
+    - Candidate only, pending a Factorio 2.1 QA and user Ingame visual approval.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.10
 Date: 13.11.2026
   Features:
