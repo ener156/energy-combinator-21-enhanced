@@ -6,6 +6,18 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## Missing signal cable warning (1.2.12 development)
+
+The Energy Combinator only exposes meaningful readings while an actual
+red or green circuit wire is physically connected to it. The GUI warns
+when there is no signal cable, shows dashes for unavailable measurements
+and output, and diagnostics report the circuit cable status separately
+from the hidden electric-network sensors. Power signal slots 2–5
+are reset to zero when the cable is removed; factor slot 1 is preserved.
+Once rewired, the next regular update resumes normal readings and avoids
+spikes from disconnected intervals. Internal hidden sensor wiring does not
+satisfy the external signal cable requirement.
+
 ## Factor-aware overview and circuit outputs (1.2.11 development)
 
 The Overview tab uses the selected **signal factor X** for its physical
