@@ -281,6 +281,22 @@ local function connect_wires(a,b)
     end
 end
 
+-- A live signal cable on either red or green connector is mandatory for
+-- producing power readings. Hidden sensor-to-sensor connections are NOT output
+-- connections and must never be counted toward this check.
+local function has_external_signal_wire(entity)
+    for _, connector_id in ipairs{
+        defines.wire_connector_id.circuit_red,
+        defines.wire_connector_id.circuit_green,
+    } do
+        local connector = entity.get_wire_connector(connector_id, false)
+        if connector and connector.valid and connector.real_connection_count > 0 then
+            return true
+        end
+    end
+    return false
+end
+
 local function toggle_light(state, value)
     local circuit = state.light.circuit_condition
     local condition = circuit.condition or {}
@@ -400,12 +416,32 @@ local function write_filters_count(state, counts)
         state.prev_outputs = prev_outputs
 end
 
+-- Clears stale outputs without changing factor X. Resetting the cumulative
+-- baseline prevents a large catch-up signal when a cable is reconnected.
+local function clear_unwired_outputs(state, control, factor, tick)
+    state.last_watts = nil
+    state.input, state.output, state.tick = nil, nil, tick
+    state.prev_outputs = {}
+    toggle_light(state, false)
+    set_signal(control, DEFAULT_F.index, {value=F, min=factor})
+    for i, signal in ipairs{I, O, C, P} do
+        set_signal(control, i + 1, {value=signal, min=0})
+    end
+    if features.filter[state.entity.name] then
+        local section = control.sections[1]
+        for index = IDX, section.filters_count do
+            set_signal(control, index, nil)
+        end
+    end
+end
+
 ---@param state ECombState
 ---@param tick integer
 ---@return nil
 local function write(state, tick, modes)
     connect_wires(state.sat, state.net)
     local control = state.control
+    local cable_connected = has_external_signal_wire(state.entity)
     local net_id = is_valid(state.net) and state.net.electric_network_id or nil
     local satisfaction_id = is_valid(state.sat) and state.sat.electric_network_id or nil
     local is_global = is_valid(state.net) and state.net.surface.has_global_electric_network
@@ -418,14 +454,21 @@ local function write(state, tick, modes)
         method = is_global and "global" or "statistics",
         enabled = control.enabled,
         filter_count = 0,
+        circuit_connected = cable_connected,
     }
     state.diagnostics = details
+    local factor = default_signal(control, DEFAULT_F)
+    alt_units.sync(state, factor.min)
+    if not cable_connected then
+        details.method = "no-circuit"
+        clear_unwired_outputs(state, control, factor.min, tick)
+        return
+    end
     if not control.enabled then
         details.method = "disabled"
         return toggle_light(state, false)
     end
-    local signal = default_signal(control, DEFAULT_F)
-    alt_units.sync(state, signal.min)
+    local signal = factor
     local filters = get_filters(state)
     details.filter_count = filters and #filters or 0
     local scale = 10 ^ -signal.min
