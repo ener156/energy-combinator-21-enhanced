@@ -1,4 +1,21 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.13
+Date: 14.11.2026
+  Bugfixes:
+    - Correct nearest rounding for true half-integer signal values when per-tick
+      energy conversion yields floating-point noise just below the half boundary.
+      E.g. a 750-kW maximum production estimate at X=5 now yields 8 under nearest
+      instead of occasionally 7. Real values below the half boundary still round down.
+    - The fix is limited to nearest rounding; up/down, MK1/MK2 measurement, output
+      signal mapping, selected factor, ALT labels, GUI layout and filter logic stay intact.
+  Verification:
+    - Added precision and negative-half regression cases in power_rounding_test.lua.
+    - Development candidate pending isolated Factorio 2.1 runtime QA and Ingame check.
+  Compatibility:
+    - 1.2.12's temporary external-wire requirement remains fully reverted.
+    - No save, entity, signal or runtime-setting schema change.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.11
 Date: 13.11.2026
   Features:
