@@ -14,10 +14,14 @@ end
 function M.read(state, is_mk2)
     local control = state.control
     if not is_mk2 then return end
-    local signals = control.entity.get_signals(defines.wire_connector_id.circuit_green, defines.wire_connector_id.circuit_red)
     local connected_wire_count = (
         (control.get_circuit_network(defines.wire_connector_id.circuit_red)   and 1 or 0) +
         (control.get_circuit_network(defines.wire_connector_id.circuit_green) and 1 or 0))
+    -- With no red/green control wire, MK2 behaves like unfiltered MK1.
+    -- nil = no circuit filter mode; {} = circuit mode with no valid filters.
+    -- Do not rely on get_signals(): native combinator outputs can echo here.
+    if connected_wire_count == 0 then return nil end
+    local signals = control.entity.get_signals(defines.wire_connector_id.circuit_green, defines.wire_connector_id.circuit_red)
     local filters = {}
     if signals == nil then return filters end
     for _, signal in pairs(signals) do
