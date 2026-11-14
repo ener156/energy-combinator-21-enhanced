@@ -6,6 +6,8 @@ local electric_statistics = require "electric_statistics"
 local electric_direct = require "electric_direct"
 local filter_baseline = require "filter_baseline"
 local circuit_slots = require "circuit_slots"
+local meter_sensors = require "meter_sensors"
+local combinator_state = require "combinator_state"
 local mk2_filters = require "mk2_filters"
 local INT32_MAX = 2^31
 
@@ -50,98 +52,11 @@ local function is_valid(entity)
 end
 
 
---------------------------------------------------------------------------------
-
-local function find_entities(entity, name)
-    return entity.surface.find_entities_filtered{name=name, position=entity.position}
-end
-
-local function find_single_entity(parent, name)
-    local result
-    for i,entity in pairs(find_entities(parent, name)) do
-        if i == 1 then result = entity else entity.destroy() end
-    end
-    return result
-end
-
-local function create_hidden_entity(surface, options)
-    local entity = surface.create_entity(options)
-    if not entity then return nil end
-    entity.destructible = false
-    entity.minable_flag = false
-    return entity
-end
-
-local function default_entity(parent, name)
-    return find_single_entity(parent, name)
-        or create_hidden_entity(parent.surface, {
-               name = name,
-               position = parent.position,
-               force = parent.force,
-           })
-end
-
-
----@param a LuaEntity
----@param b LuaEntity
-local function connect_wires(a,b)
-    for _, wire in ipairs{defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green} do
-        if not a.get_circuit_network(wire) then
-            local connector_a = a.get_wire_connector(wire, true)
-            local connector_b = b.get_wire_connector(wire, true)
-            connector_a.connect_to(connector_b, false, defines.wire_origin.script)
-        end
-    end
-end
-
-local function toggle_light(state, value)
-    local circuit = state.light.circuit_condition
-    local condition = circuit.condition or {}
-    local desired = value and 0 or 1
-    if condition.constant == desired then return end
-    condition.constant = desired
-    circuit.condition = condition
-    state.light.circuit_condition = circuit
-end
-
-
---------------------------------------------------------------------------------
-
----@class ECombState
-    ---@field control LuaConstantCombinatorControlBehavior
-    ---@field entity LuaEntity
-    ---@field tick integer
-    ---@field net LuaEntity @ meter-network entity
-    ---@field sat LuaEntity @ meter-satisfaction entity
-    ---@field input integer
-    ---@field output integer
-    ---@field prev_outputs table<string,integer>
-
----@param entity LuaEntity
----@return ECombState
-local function State(entity)
-    local state = {entity=entity, tick=game.tick, prev_outputs={}}
-    state.net = default_entity(entity, 'power-combinator-meter-network')
-    state.sat = default_entity(entity, 'power-combinator-meter-satisfaction')
-    if state.net and state.sat then connect_wires(state.sat, state.net) end
-    if not (state.net and state.sat) then return nil end
-    state.control = entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-    circuit_slots.initialize(state.control, features.filter[state.entity.name])
-    state.light = state.sat.get_or_create_control_behavior()
-    state.light.circuit_condition = {condition={
-        comparator = "=",
-        first_signal = circuit_slots.factor_signal,
-        constant = 1, -- 0 means on and 1 means off
-    }}
-    return state
-end
-
-
 ---@param state ECombState
 ---@param tick integer
 ---@return nil
 local function write(state, tick, modes)
-    connect_wires(state.sat, state.net)
+    meter_sensors.connect(state.sat, state.net)
     local control = state.control
     local net_id = is_valid(state.net) and state.net.electric_network_id or nil
     local satisfaction_id = is_valid(state.sat) and state.sat.electric_network_id or nil
@@ -159,7 +74,7 @@ local function write(state, tick, modes)
     state.diagnostics = details
     if not control.enabled then
         details.method = "disabled"
-        return toggle_light(state, false)
+        return meter_sensors.set_light(state, false)
     end
     local signal = circuit_slots.ensure_factor(control)
     alt_units.sync(state, signal.min)
@@ -198,46 +113,10 @@ local function write(state, tick, modes)
     if not enabled then
         input_diff,output_diff,maxin,maxout = 0, 0, 0, 0 -- don't show anything
     end
-    toggle_light(state, enabled)
+    meter_sensors.set_light(state, enabled)
     circuit_slots.write_power(control, signal.min, input_diff, output_diff, maxin, maxout)
     if features.filter[state.entity.name] then
         circuit_slots.write_filter_counts(state, counts)
-    end
-end
-
---------------------------------------------------------------------------------
-
----@param entity LuaEntity
-local function alloc(entity)
-    if entity and entity.unit_number and MK[entity.prototype.name] then
-        local state = State(entity)
-        if not state then return end
-        storage.state[entity.unit_number] = state
-        local factor_slot = circuit_slots.get(state.control, 1)
-        alt_units.sync(state, factor_slot and factor_slot.min or 3)
-        local registration = script.register_on_object_destroyed(entity)
-        state.registration = registration
-        storage.registrations[registration] = entity.unit_number
-    end
-end
-
----@param entity LuaEntity | EntityUnitNumber
-local function cleanup(entity)
-    if type(entity) =="number" then
-        ---@type table
-        entity = {unit_number=entity}
-    end
-    if entity and entity.unit_number then
-        local state = storage.state[entity.unit_number]
-        if state then
-            alt_units.remove(entity.unit_number)
-            if is_valid(state.net) then state.net.destroy() end
-            if is_valid(state.sat) then state.sat.destroy() end
-            storage.state[entity.unit_number] = nil
-            if state.registration then storage.registrations[state.registration] = nil end
-            state.net = nil
-            state.sat = nil
-        end
     end
 end
 
@@ -251,22 +130,16 @@ local function update(tick)
             write(state, tick, modes)
         end
     end
-    for _, id in ipairs(invalid) do cleanup(id) end
+    for _, id in ipairs(invalid) do combinator_state.cleanup(id) end
     energy_gui.refresh_open_players(storage.state)
 end
-
 local function init()
     alt_units.reset()
     for _, player in pairs(game.players) do energy_gui.close(player) end
-    storage.state = {}
     storage.energy_gui_context = {}
-    storage.registrations = {}
-    for _, surface in pairs(game.surfaces) do
-        for _, combinator in pairs(surface.find_entities_filtered{name={MK1,MK2}}) do
-            alloc(combinator)
-        end
-    end
+    combinator_state.rebuild({MK1,MK2}, MK, features.filter)
 end
+
 
 --------------------------------------------------------------------------------
 
@@ -295,11 +168,10 @@ script.on_init(init)
 script.on_configuration_changed(init)
 
 script.on_event(events.entity.added, function (event)
-    alloc(event.entity)
+    combinator_state.allocate(event.entity, MK, features.filter)
 end)
 script.on_event(events.entity.removed, function (event)
-    local unit_number = storage.registrations and storage.registrations[event.registration_number]
-    if unit_number then cleanup(unit_number) end
+    combinator_state.cleanup_registration(event.registration_number)
 end)
 
 -- Hover over a combinator and press the configurable shortcut to open its vanilla GUI.
