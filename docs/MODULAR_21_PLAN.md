@@ -24,7 +24,7 @@ Scope: isolated development. Do not install, publish, or merge until native Fact
 - Branch source checkpoint: `main` 1.2.14 remains untouched; modular branch only.
 - `control.lua` is now 248 lines vs. original 668 lines; Factorio 2.1 GUI, four rounding modes, ALT code and factor mapping are unchanged.
 - GitHub source readback and static owner/code-reference checks passed for this extraction. These checks **do not** establish Factorio runtime correctness.
-- Lua-only tests committed in `tests/modular_measurement_test.lua`, `tests/modular_circuit_test.lua` and `tests/modular_lifecycle_test.lua`; these Lua-mock files have not yet been executed. Do not mark native QA or user acceptance as PASS.
+- Lua-only tests committed in `tests/modular_measurement_test.lua`, `tests/modular_circuit_test.lua` and `tests/modular_lifecycle_test.lua`. All **three executed locally** with `texlua` (Lua 5.3) and printed their explicit `...=PASS` markers. All seven module files and all three test files passed `loadfile` syntax checks. Prior to executing, the ten local files were verified byte-for-byte by matching their Git blob hashes against GitHub. This is **local Lua-mock QA**, not a Factorio 2.1.24 / Lua 5.2 runtime, installed-mod, save migration or user in-game test. Do not mark native QA or user acceptance as PASS.
 - Self-hosted Windows-System QA request: `ECMOD3-QA-20261114-7C6B39A1` in `ener156/Respberry-Windows-Runner@windows-desktop-exec`, pinned script `ener156/Scripts@34a3639f3456fad08d4824ba0657c3266c519773`. This is a submitted request only, **not** a verified QA result. The script uses an isolated temporary mod directory and the 1.2.14 baseline ZIP; no installed mod or personal save is modified.
 - Next candidates: isolate measurement rounding/snapshot composition and GUI event orchestration only if this reduces ownership complexity. Preserve native Factorio save and GUI semantics.
 
@@ -42,7 +42,7 @@ Scope: isolated development. Do not install, publish, or merge until native Fact
 
 ## Gates for follow-on work
 
-1. Static source inspection done; execute Lua syntax and mock-based tests on an available self-hosted runner; still OPEN.
+1. Static inspection and local Lua 5.3 mock/syntax tests PASS (Git-blob matched source). Re-execution on authorized self-hosted infrastructure and native Factorio 2.1.24 QA remain OPEN.
 2. Isolated Windows-System/HAUSE1 Factorio 2.1.24 tests comparing original 1.2.14 and modular source for MK1/MK2, all filter transitions and X5 rounding.
 3. Placed-save migration and blueprint/paste persistence, GUI clicks, ALT text, circuit feedback, mixed filters and direct meter diagnostics.
 4. User in-game acceptance, compatibility and multiplayer/platform tests before any installation, merge or release.
