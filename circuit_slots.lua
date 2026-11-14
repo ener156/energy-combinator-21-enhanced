@@ -10,7 +10,6 @@ local I,O,F,C,P = table.unpack{
     {type="virtual", quality="normal", comparator="=", name="power-max-consumption"},
     {type="virtual", quality="normal", comparator="=", name="power-max-production"},
 }
-local INT32_MAX = 2^31
 local DEFAULT_F = {value=F, min=3, index=1}
 local DEFAULTS  = {
     DEFAULT_F,
