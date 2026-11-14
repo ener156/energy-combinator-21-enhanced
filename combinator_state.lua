@@ -22,8 +22,13 @@ local function new_state(entity, is_mk2)
     local state = {entity=entity, tick=game.tick, prev_outputs={}}
     state.net = meter_sensors.obtain(entity, 'power-combinator-meter-network')
     state.sat = meter_sensors.obtain(entity, 'power-combinator-meter-satisfaction')
-    if state.net and state.sat then meter_sensors.connect(state.sat, state.net) end
-    if not (state.net and state.sat) then return nil end
+    if not (state.net and state.sat) then
+        -- Do not leave a hidden network meter orphaned when its pair cannot
+        -- be created (for example, during placement or mod migration).
+        meter_sensors.dispose(state)
+        return nil
+    end
+    meter_sensors.connect(state.sat, state.net)
     state.control = entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     circuit_slots.initialize(state.control, is_mk2)
     state.light = state.sat.get_or_create_control_behavior()
