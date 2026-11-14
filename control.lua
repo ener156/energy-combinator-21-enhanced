@@ -7,6 +7,7 @@ local electric_direct = require "electric_direct"
 local filter_baseline = require "filter_baseline"
 local circuit_slots = require "circuit_slots"
 local mk2_filters = require "mk2_filters"
+local INT32_MAX = 2^31
 
 local MK1 = common.prototype_prefix .. "power-combinator"
 local MK2 = common.prototype_prefix .. "power-combinator-MK2"
