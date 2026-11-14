@@ -45,8 +45,19 @@ function M.round_signal(value, mode)
     elseif mode == "down" then
         return M.floor_maximum_production(value)
     end
-    -- Previous default for measured current power (nearest, halves away from 0).
-    return value >= 0 and math.floor(value + 0.5) or math.ceil(value - 0.5)
+    -- Round to the nearest integer, with exact halves away from zero.
+    -- Per-tick prototype energy * 60 * 10^-X can turn an exact 7.5 into
+    -- 7.499999999999999 (e.g. 750 kW at X=5). That tiny binary error must
+    -- not turn the mathematically rounded signal 8 into 7.
+    -- Only values within a tightly bounded tolerance of a half boundary
+    -- are snapped; real fractions such as 7.49999 still round down.
+    local magnitude = math.abs(value)
+    local whole = math.floor(magnitude)
+    local fractional = magnitude - whole
+    local tolerance = math.min(1e-9, math.max(1e-12, magnitude * 1e-13))
+    local rounded = whole + ((fractional >= 0.5 or
+        0.5 - fractional <= tolerance) and 1 or 0)
+    return value < 0 and -rounded or rounded
 end
 
 return M
