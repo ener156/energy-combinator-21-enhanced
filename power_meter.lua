@@ -55,6 +55,11 @@ function M.write(state, tick, modes, is_mk2)
     state.diagnostics = details
     if not control.enabled then
         details.method = "disabled"
+        -- A disabled combinator does not measure. Discard cumulative baselines
+        -- so the first enabled sample never averages an entire disabled period.
+        state.tick = tick
+        state.input, state.output = nil, nil
+        state.filter_signature = nil
         return meter_sensors.set_light(state, false)
     end
     local signal = circuit_slots.ensure_factor(control)
