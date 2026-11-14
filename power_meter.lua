@@ -64,6 +64,21 @@ function M.write(state, tick, modes, is_mk2)
     end
     local signal = circuit_slots.ensure_factor(control)
     alt_units.sync(state, signal.min)
+    if not details.connected then
+        -- Match MK1's disconnected behavior: no live power or filter feedback.
+        -- Keeping only the X factor allows a clean first sample on reconnect.
+        state.tick = tick
+        state.input, state.output = nil, nil
+        state.filter_signature = nil
+        state.last_watts = {
+            current_consumption = 0, current_production = 0,
+            maximum_consumption = 0, maximum_production = 0,
+        }
+        circuit_slots.write_power(control, signal.min, 0, 0, 0, 0)
+        if is_mk2 then circuit_slots.write_filter_counts(state, {}, false) end
+        meter_sensors.set_light(state, false)
+        return
+    end
     local filters = mk2_filters.read(state, is_mk2)
     details.filter_count = filters and #filters or 0
     local scale = 10 ^ -signal.min
@@ -102,7 +117,7 @@ function M.write(state, tick, modes, is_mk2)
     meter_sensors.set_light(state, enabled)
     circuit_slots.write_power(control, signal.min, input_diff, output_diff, maxin, maxout)
     if is_mk2 then
-        circuit_slots.write_filter_counts(state, counts)
+        circuit_slots.write_filter_counts(state, counts, details.connected)
     end
 end
 
