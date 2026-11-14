@@ -112,5 +112,7 @@ eq(#selected, 1, "only one selected item exceeds feedback threshold")
 eq(selected[1], "radar", "radar remains selected")
 eq(reader.read(read_state,false),nil,"MK1 reads no MK2 filter selection")
 filter_control.entity.get_signals=function() return nil end
-eq(#reader.read(read_state,true),0,"MK2 no circuit connection yields empty filters")
+eq(#reader.read(read_state,true),0,"MK2 with connected circuit but no incoming signals has zero selected filters")
+filter_control.get_circuit_network=function() return nil end
+eq(reader.read(read_state,true),nil,"MK2 with no red or green circuit wire selects full unfiltered network")
 print("EC_MODULAR_CIRCUIT_LUA_TEST=PASS")
