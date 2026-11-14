@@ -125,4 +125,59 @@ meter.write(disabled,15,modes,false)
 eq(disabled.diagnostics.method,"disabled","disabled diagnostics")
 eq(disabled.light_on,false,"disabled status lamp")
 eq(writes,before,"disabled combinator does not write power slots")
+-- Re-enabling a paused MK2 must start a fresh cumulative interval. In the
+-- original logic a long pause left state.tick and totals unchanged, which
+-- smeared the first resumed reading across the entire disabled interval.
+local paused_mk2=state(5,10)
+paused_mk2.input=10000
+paused_mk2.output=100
+paused_mk2.filter_signature="radar"
+paused_mk2.control.enabled=false
+meter.write(paused_mk2,15,modes,true)
+eq(paused_mk2.tick,15,"disabled MK2 advances measurement tick")
+eq(paused_mk2.input,nil,"disabled MK2 discards old input baseline")
+eq(paused_mk2.output,nil,"disabled MK2 discards old output baseline")
+eq(paused_mk2.filter_signature,nil,"disabled MK2 resets filter baseline")
+meter.write(paused_mk2,45,modes,true)
+eq(paused_mk2.tick,45,"disabled MK2 keeps tick current")
+paused_mk2.control.enabled=true
+sample.input=90000000
+sample.output=10000000
+filters={"radar"}
+meter.write(paused_mk2,50,modes,true)
+eq(paused_mk2.control.outputs[2],0,"re-enabled MK2 starts at zero, not paused history")
+eq(paused_mk2.control.outputs[3],0,"re-enabled MK2 production rebase")
+eq(paused_mk2.tick,50,"re-enabled MK2 updates timestamp")
+sample.input=90050000
+sample.output=10025000
+meter.write(paused_mk2,55,modes,true)
+eq(paused_mk2.control.outputs[2],6,"MK2 second sample resumes normal 600kW")
+eq(paused_mk2.control.outputs[3],3,"MK2 second sample resumes normal 300kW")
+
+-- MK1 direct readings should be available immediately after enabling;
+-- fallback statistics must not average consumption across the pause.
+local paused_mk1=state(5,10)
+paused_mk1.input=1000
+paused_mk1.output=1000
+paused_mk1.control.enabled=false
+meter.write(paused_mk1,100,modes,false)
+eq(paused_mk1.tick,100,"disabled MK1 advances measurement tick")
+paused_mk1.control.enabled=true
+direct_watts=nil
+sample.input=91000000
+sample.output=11000000
+meter.write(paused_mk1,105,modes,false)
+eq(paused_mk1.control.outputs[2],0,"MK1 fallback first sample no stale cumulative spike")
+sample.input=91050000
+sample.output=11025000
+meter.write(paused_mk1,110,modes,false)
+eq(paused_mk1.control.outputs[2],6,"MK1 fallback second sample normal")
+
+local paused_mk1_direct=state(5,10)
+paused_mk1_direct.control.enabled=false
+meter.write(paused_mk1_direct,100,modes,false)
+paused_mk1_direct.control.enabled=true
+direct_watts=750000
+meter.write(paused_mk1_direct,105,modes,false)
+eq(paused_mk1_direct.control.outputs[2],8,"re-enabled MK1 direct measurement immediate")
 print("EC_MODULAR_POWER_METER_LUA_TEST=PASS")
