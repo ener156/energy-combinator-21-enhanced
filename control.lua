@@ -431,6 +431,21 @@ local function write(state, tick, modes)
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
     local input, output, maxin, maxout, counts = collect_electric_statistics(state.net,state.sat, filters)
+    -- MK2 accumulates statistics for only the selected prototype names.
+    -- Adding/removing a filter changes the *entire cumulative total*, so its
+    -- first delta cannot be compared with a baseline from the old filter set.
+    -- Rebase precisely once per effective selection (order is immaterial).
+    -- This prevents transient +/- millions of watts on filter edits while
+    -- preserving regular deltas and all maximum-capacity estimates.
+    if filters ~= nil then
+        local sorted_filters = {table.unpack(filters)}
+        table.sort(sorted_filters)
+        local signature = table.concat(sorted_filters, "\n")
+        if state.filter_signature ~= signature then
+            state.filter_signature = signature
+            state.input, state.output = input, output
+        end
+    end
     -- Keep existing cumulative inputs, building filters and capacity estimates authoritative.
     local input_diff = diff(input, state.input) * variance * scale
     local output_diff = diff(output, state.output) * variance * scale
