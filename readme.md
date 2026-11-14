@@ -6,6 +6,17 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## Precision-safe nearest rounding (1.2.13 development)
+
+Mathematical nearest rounding now treats binary floating-point noise near exact
+half-integer boundaries correctly. For example, an estimated 750 kW at X=5
+represents 7.5 signal points and rounds to 8 with the nearest mode even if
+energy-per-tick conversion yields 7.499999999999998 internally. Real values
+below the half boundary, such as 7.499999999, still round down. All up/down
+rounding semantics, measured values and Tier 2 filters are unchanged. No
+external circuit wire is required to measure power; the withdrawn 1.2.12 cable
+experiment is not part of this candidate.
+
 ## Factor-aware overview and circuit outputs (1.2.11 development)
 
 The Overview tab uses the selected **signal factor X** for its physical
