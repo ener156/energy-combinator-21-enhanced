@@ -4,16 +4,26 @@ Source baseline: `main` version 1.2.14, commit `cd1ed627a6f5ba4e4bc871b7407e6d4f
 
 Scope: isolated development. Do not install, publish, or merge until native Factorio QA and user in-game acceptance.
 
-## Current ownership (stage 1)
+## Current ownership (stage 2)
 
-- `control.lua`: Factorio event registrations, lifecycle, state assembly, circuit-signal writing and orchestration. It remains the **only physical signal writer** for slots 1-5.
+- `control.lua`: Factorio event registration, lifecycle, state assembly, measurement orchestration, diagnostics and final rounding; delegates all actual combinator slot writes.
 - `electric_statistics.lua`: cumulative network statistics, filtered prototype counts and maximum power estimates.
 - `electric_direct.lua`: direct local-network power measurement for MK1.
 - `filter_baseline.lua`: MK2 cumulative statistics baseline reset when the effective filter selection changes.
+- `mk2_filters.lua`: MK2 item-signal-to-energy-prototype selection with feedback compensation; **read-only** for circuit slots.
+- `circuit_slots.lua`: **sole writer for all native combinator slots** (factor X in slot 1, four power outputs in slots 2-5, MK2 feedback in slots 6+); initializes default slots and handles GUI factor updates.
 - `power_rounding.lua`: rounding and half-boundary handling; must preserve X5 750 kW -> 8 nearest.
 - `power_units.lua`: display unit conversions and factor labels.
 - `energy_gui.lua`: overview, settings and diagnostics presentation; reads circuit slots, never writes measured signals.
 - `alt_units.lua`: one ALT label per active combinator.
+
+## Source and test evidence
+
+- Branch source checkpoint: `main` 1.2.14 remains untouched; modular branch only.
+- `control.lua` is now 376 lines vs. original 668 lines; the Factorio 2.1 GUI, four rounding modes, ALT code and factor mapping are unchanged.
+- GitHub source readback and static owner/code-reference checks passed for this extraction. These checks **do not** establish Factorio runtime correctness.
+- Lua-only tests added in `tests/modular_measurement_test.lua` and `tests/modular_circuit_test.lua`; neither has been executed on a real Factorio runtime. Do not mark native QA or player acceptance as PASS.
+- Next extraction candidate: sensor/hidden-entity lifecycle and state management, with save migration before accepting changes.
 
 ## Compatibility invariants
 
@@ -29,7 +39,7 @@ Scope: isolated development. Do not install, publish, or merge until native Fact
 
 ## Gates for follow-on work
 
-1. Static source inspection and Lua syntax checks on new modules.
+1. Static source inspection done; execute Lua syntax and mock-based tests on an available self-hosted runner; still OPEN.
 2. Isolated Windows-System/HAUSE1 Factorio 2.1.24 tests comparing original 1.2.14 and modular source for MK1/MK2, all filter transitions and X5 rounding.
 3. Placed-save migration and blueprint/paste persistence, GUI clicks, ALT text, circuit feedback, mixed filters and direct meter diagnostics.
 4. User in-game acceptance, compatibility and multiplayer/platform tests before any installation, merge or release.
