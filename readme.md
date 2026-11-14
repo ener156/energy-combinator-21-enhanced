@@ -6,6 +6,17 @@ This mod reports electric network power statistics through the circuit network. 
 
 Factorio 2.1 startup and runtime smoke tests have passed. Version 1.2.1 also addresses scaling persistence, circuit-filter feedback and Tips & Tricks integration. These tests do not establish full multiplayer, migrated-save or space-platform compatibility.
 
+## MK2 filter-change transient fix (1.2.14 development)
+
+MK2 keeps its normal native Factorio combinator editor for selecting
+electrical entity types. If that selection changes during gameplay,
+the mod now starts a new baseline for the cumulative filtered electric
+network statistics, instead of subtracting totals obtained from different
+filter sets. This prevents short, incorrect million-watt consumption or
+production spikes when changing/clearing filters. It does not discard the
+filter settings or create an independent filter manager. Maximum estimates
+continue to be calculated from the current filter set.
+
 ## Precision-safe nearest rounding (1.2.13 development)
 
 Mathematical nearest rounding now treats binary floating-point noise near exact
