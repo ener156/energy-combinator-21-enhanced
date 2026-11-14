@@ -1,4 +1,23 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.14
+Date: 14.11.2026
+  Bugfixes:
+    - MK2: reset the cumulative statistics baseline once when the selected
+      electrical prototype filters change. Comparing cumulative statistics
+      across different filter sets previously caused large temporary positive
+      or negative current-power signals (observed in an Ingame video).
+    - Keep the MK2 filter selection and multi-section editing in the original
+      Factorio combinator GUI. No new or duplicated filter storage.
+  Compatibility:
+    - MK1 direct measurement, MK2 steady-state statistics, maximum estimates,
+      selected signal factor X, global rounding modes and ALT layout unchanged.
+    - Includes the precision-safe nearest-rounding fix from 1.2.13.
+    - The experimental 1.2.12 external cable gate stays removed.
+  Verification:
+    - Candidate pending isolated native Factorio 2.1 filter-change regression
+      and visual Ingame approval. Not installed or published.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.13
 Date: 14.11.2026
   Bugfixes:
