@@ -4,9 +4,10 @@ Source baseline: `main` version 1.2.14, commit `cd1ed627a6f5ba4e4bc871b7407e6d4f
 
 Scope: isolated development. Do not install, publish, or merge until native Factorio QA and user in-game acceptance.
 
-## Current ownership (stage 3)
+## Current ownership (stage 4)
 
-- `control.lua`: event registration, measurement orchestration, diagnostics and final rounding; delegates sensor connections, state ownership and all circuit-slot writes.
+- `control.lua`: only event registration, update scheduling, lifecycle/GUI dispatch, plus per-tick orchestration; has no direct power measurement or circuit slot writer.
+- `power_meter.lua`: **single owner of power-measurement computation**, cumulative input/output comparison, Factorio statistics/direct fallbacks, scaling, rounding, physical GUI snapshot, and diagnostics; delegates all native circuit slot writes to `circuit_slots.lua`.
 - `electric_statistics.lua`: cumulative network statistics, filtered prototype counts and maximum power estimates.
 - `electric_direct.lua`: direct local-network power measurement for MK1.
 - `filter_baseline.lua`: MK2 cumulative statistics baseline reset when the effective filter selection changes.
@@ -22,11 +23,12 @@ Scope: isolated development. Do not install, publish, or merge until native Fact
 ## Source and test evidence
 
 - Branch source checkpoint: `main` 1.2.14 remains untouched; modular branch only.
-- `control.lua` is now 248 lines vs. original 668 lines; Factorio 2.1 GUI, four rounding modes, ALT code and factor mapping are unchanged.
+- `control.lua` is now 160 lines vs. original 668 lines; Factorio 2.1 GUI, four rounding modes, ALT code and factor mapping are unchanged.
 - GitHub source readback and static owner/code-reference checks passed for this extraction. These checks **do not** establish Factorio runtime correctness.
-- Lua-only tests committed in `tests/modular_measurement_test.lua`, `tests/modular_circuit_test.lua` and `tests/modular_lifecycle_test.lua`. All **three executed locally** with `texlua` (Lua 5.3) and printed their explicit `...=PASS` markers. All seven module files and all three test files passed `loadfile` syntax checks. Prior to executing, the ten local files were verified byte-for-byte by matching their Git blob hashes against GitHub. This is **local Lua-mock QA**, not a Factorio 2.1.24 / Lua 5.2 runtime, installed-mod, save migration or user in-game test. Do not mark native QA or user acceptance as PASS.
+- Four Lua-only regression tests: `tests/modular_measurement_test.lua`, `tests/modular_circuit_test.lua`, `tests/modular_lifecycle_test.lua`, and `tests/modular_power_meter_test.lua`. All **four executed locally** with `texlua` (Lua 5.3) and reported PASS. All eight owner modules and all four test files passed `loadfile` syntax checks; all 12 files matched their exact GitHub blob SHA. New power-meter test covers direct MK1/legacy fallback, filtered MK2 rebase, X5 750 kW nearest=8 and maximum rounding, overflow/disabled state, and diagnostics. This is **local mock QA**, not a native Factorio 2.1.24 / Lua 5.2 runtime, migration or user in-game test.
 - Self-hosted Windows-System QA request: `ECMOD3-QA-20261114-7C6B39A1` in `ener156/Respberry-Windows-Runner@windows-desktop-exec`, pinned script `ener156/Scripts@34a3639f3456fad08d4824ba0657c3266c519773`. This is a submitted request only, **not** a verified QA result. The script uses an isolated temporary mod directory and the 1.2.14 baseline ZIP; no installed mod or personal save is modified.
-- Next candidates: isolate measurement rounding/snapshot composition and GUI event orchestration only if this reduces ownership complexity. Preserve native Factorio save and GUI semantics.
+- Additional native QA request for stage 4: `ECMOD4-QA-20261114-2F7C81A4` in `ener156/Respberry-Windows-Runner@windows-desktop-exec`, pinned script commit `ener156/Scripts@59cca50ae69daafae0ad8600c825025c06648191` and functional mod source commit `3e8ea682736a859a12cac074126657bb01f1ef06`. Submission verified via runner request commit `b0ded25785efeeec1f85f9e88f7d0c7facc7b02e`. **No native run ID or test log has been verified**. This request is independent of the earlier stage-3 test.
+- Architecture implementation is now ready for native review. Avoid further arbitrary extraction until Factorio 2.1.24 run evidence is available. Preserve native save and GUI semantics.
 
 ## Compatibility invariants
 
@@ -42,7 +44,7 @@ Scope: isolated development. Do not install, publish, or merge until native Fact
 
 ## Gates for follow-on work
 
-1. Static inspection and local Lua 5.3 mock/syntax tests PASS (Git-blob matched source). Re-execution on authorized self-hosted infrastructure and native Factorio 2.1.24 QA remain OPEN.
+1. Static inspection and 4/4 local Lua 5.3 mock tests plus 12/12 syntax/source SHA verifications PASS. Native Factorio 2.1.24 QA remains OPEN.
 2. Isolated Windows-System/HAUSE1 Factorio 2.1.24 tests comparing original 1.2.14 and modular source for MK1/MK2, all filter transitions and X5 rounding.
 3. Placed-save migration and blueprint/paste persistence, GUI clicks, ALT text, circuit feedback, mixed filters and direct meter diagnostics.
 4. User in-game acceptance, compatibility and multiplayer/platform tests before any installation, merge or release.
