@@ -81,6 +81,13 @@ function M.write(state, tick, modes, is_mk2)
     end
     local filters = mk2_filters.read(state, is_mk2)
     details.filter_count = filters and #filters or 0
+    if is_mk2 and filters == nil and state.filter_signature ~= nil then
+        -- A filter cable was just removed. Start fresh unfiltered statistics
+        -- and allow the MK1 direct network-flow path immediately below.
+        -- When the wire returns, the next filtered sample rebases again.
+        state.filter_signature = nil
+        state.input, state.output = nil, nil
+    end
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
     local input, output, maxin, maxout, counts = electric_statistics.collect(state.net, state.sat, filters)
@@ -89,9 +96,10 @@ function M.write(state, tick, modes, is_mk2)
     local input_diff = diff(input, state.input) * variance * scale
     local output_diff = diff(output, state.output) * variance * scale
     state.input, state.output, state.tick = input, output, tick
-    -- MK1 measures the complete local network directly when the API permits.
-    -- MK2 and global-network fallback keep the existing filtered statistics.
-    if not is_mk2 then
+    -- MK1 and MK2 without control wires measure the complete electric
+    -- network directly when available. A wired MK2 remains filter-driven.
+    -- Global networks and unavailable direct flow use cumulative statistics.
+    if not is_mk2 or filters == nil then
         local watts = electric_direct.read_watts(state.net, state.sat)
         if watts then
             input_diff, output_diff = watts * scale, watts * scale
