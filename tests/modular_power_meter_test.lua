@@ -180,4 +180,30 @@ paused_mk1_direct.control.enabled=true
 direct_watts=750000
 meter.write(paused_mk1_direct,105,modes,false)
 eq(paused_mk1_direct.control.outputs[2],8,"re-enabled MK1 direct measurement immediate")
+-- MK2 without any circuit wire selects the complete electric network.
+-- The filter-reader's nil mode is tested against real circuit mocks separately.
+filters=nil
+direct_watts=70000
+local no_wire_mk2=state(1,10)
+meter.write(no_wire_mk2,15,modes,true)
+eq(no_wire_mk2.control.outputs[2],7000,"unwired MK2 consumption matches MK1 at X1")
+eq(no_wire_mk2.control.outputs[3],7000,"unwired MK2 production matches MK1 at X1")
+eq(no_wire_mk2.diagnostics.method,"direct","unwired MK2 uses direct whole-grid measurement")
+filters={"radar"}
+sample.input=20000000
+sample.output=0
+meter.write(no_wire_mk2,20,modes,true)
+eq(no_wire_mk2.control.outputs[2],0,"attaching filter wire rebases first filtered sample")
+eq(no_wire_mk2.diagnostics.method,"statistics","wired MK2 remains filter-driven")
+sample.input=20050000
+meter.write(no_wire_mk2,25,modes,true)
+eq(no_wire_mk2.control.outputs[2],6000,"subsequent wired MK2 sample measures filter only")
+filters=nil
+meter.write(no_wire_mk2,30,modes,true)
+eq(no_wire_mk2.control.outputs[2],7000,"unplugging filter wire restores full power immediately")
+eq(no_wire_mk2.filter_signature,nil,"unplugging circuit resets old filter baseline")
+filters={"radar"}
+sample.input=999999999
+meter.write(no_wire_mk2,35,modes,true)
+eq(no_wire_mk2.control.outputs[2],0,"reconnecting circuit rebases without spike")
 print("EC_MODULAR_POWER_METER_LUA_TEST=PASS")
