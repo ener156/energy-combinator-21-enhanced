@@ -5,25 +5,9 @@ local energy_gui = require "energy_gui"
 local electric_statistics = require "electric_statistics"
 local electric_direct = require "electric_direct"
 local filter_baseline = require "filter_baseline"
+local circuit_slots = require "circuit_slots"
+local mk2_filters = require "mk2_filters"
 
-local I,O,F,C,P = table.unpack{
-    {type="virtual", quality="normal", comparator="=", name="power-consumption"},
-    {type="virtual", quality="normal", comparator="=", name="power-production"},
-    {type="virtual", quality="normal", comparator="=", name="power-factor"},
-    {type="virtual", quality="normal", comparator="=", name="power-max-consumption"},
-    {type="virtual", quality="normal", comparator="=", name="power-max-production"},
-}
-local INT32_MAX = 2^31
-local DEFAULT_F = {value=F, min=3, index=1}
-local DEFAULTS  = {
-    DEFAULT_F,
-    {value=I, min=0, index=2},
-    {value=O, min=0, index=3},
-    {value=C, min=0, index=4},
-    {value=P, min=0, index=5},
-}
-
-local IDX = 6 -- index of filter signal
 local MK1 = common.prototype_prefix .. "power-combinator"
 local MK2 = common.prototype_prefix .. "power-combinator-MK2"
 local MK = {[MK1]=true,[MK2]=true}
@@ -57,34 +41,6 @@ end
     ---@field name string
     ---@field count integer
 
---- Get signal at index from top section.
---- <br> Returns nil if no signal at given index.
----@param control LuaConstantCombinatorControlBehavior
----@param idx integer
----@return LogisticFilter
-local function get_signal(control, idx)
-    if control.sections_count == 0 then
-        control.add_section()
-    end
-    local section = control.sections[1]
-    return section.get_slot(idx)
-end
-
----@param control LuaConstantCombinatorControlBehavior
----@param idx integer
----@param signal LogisticFilter | nil
-local function set_signal(control, idx, signal)
-    if control.sections_count == 0 then
-        control.add_section()
-    end
-
-    local section = control.sections[1]
-    if signal == nil then
-        section.clear_slot(idx)
-    else
-        section.set_slot(idx, signal)
-    end
-end
 
 --------------------------------------------------------------------------------
 
@@ -124,26 +80,6 @@ local function default_entity(parent, name)
            })
 end
 
----@param a SignalFilter
----@param b SignalFilter
----@return boolean
-local function same_signal(a,b)
-    return a.type == b.type and a.name == b.name
-end
-
----@class LogisticFilterWithIndex : LogisticFilter
-    ---@field index integer
-
----@param control LuaConstantCombinatorControlBehavior
----@param default LogisticFilterWithIndex
----@return LogisticFilter
-local function default_signal(control, default)
-    local signal = get_signal(control, default.index)
-    if signal == nil or signal.value == nil then return default end
-    if signal and same_signal(signal.value, default.value) then return signal end
-    set_signal(control, default.index, default)
-    return default
-end
 
 ---@param a LuaEntity
 ---@param b LuaEntity
@@ -167,34 +103,6 @@ local function toggle_light(state, value)
     state.light.circuit_condition = circuit
 end
 
----@param entity LuaEntityPrototype
----@return boolean
-local function has_energy(entity)
-    return (entity.get_max_energy_usage()      or 0) > 0
-        or (entity.get_max_energy_production() or 0) > 0
-end
-
----@param state ECombState
----@return string[] | nil
-local function get_filters(state)
-    local control = state.control
-    if not features.filter[control.entity.name] then return end
-    local signals = control.entity.get_signals(defines.wire_connector_id.circuit_green, defines.wire_connector_id.circuit_red)
-    local connected_wire_count = (
-        (control.get_circuit_network(defines.wire_connector_id.circuit_red)   and 1 or 0) +
-        (control.get_circuit_network(defines.wire_connector_id.circuit_green) and 1 or 0))
-    local filters = {}
-    if signals == nil then return filters end
-    for _, signal in pairs(signals) do
-        local item = prototypes.item[signal.signal.name]
-        local prev_count = state.prev_outputs[signal.signal.name] or 0
-        local entity = item and item.place_result
-        if entity and has_energy(entity) and signal.count > prev_count * connected_wire_count then
-            table.insert(filters, entity.name)
-        end
-    end
-    return filters
-end
 
 --------------------------------------------------------------------------------
 
@@ -217,64 +125,16 @@ local function State(entity)
     if state.net and state.sat then connect_wires(state.sat, state.net) end
     if not (state.net and state.sat) then return nil end
     state.control = entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-    local parameters = {table.unpack(DEFAULTS)}
-    parameters[DEFAULT_F.index] = default_signal(state.control, DEFAULT_F)       -- remember factor
-    parameters[DEFAULT_F.index].index = DEFAULT_F.index
-    if features.filter[state.entity.name] then
-        local saved_filter = get_signal(state.control, IDX)
-        if saved_filter then
-            saved_filter.min = 0
-            saved_filter.index = IDX
-            parameters[IDX] = saved_filter
-        end
-    end
-    if state.control.sections_count == 0 then state.control.add_section() end
-    local section = state.control.sections[1]
-    section.filters = parameters -- clears all signals
+    circuit_slots.initialize(state.control, features.filter[state.entity.name])
     state.light = state.sat.get_or_create_control_behavior()
     state.light.circuit_condition = {condition={
         comparator = "=",
-        first_signal = F,
+        first_signal = circuit_slots.factor_signal,
         constant = 1, -- 0 means on and 1 means off
     }}
     return state
 end
 
----@param state ECombState
----@param counts table<string,integer>
-local function write_filters_count(state, counts)
-    local control = state.control
-    local signals = control.entity.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
-        local signals_count = control.sections[1].filters_count
-        local filters_index = 6
-        if signals == nil then
-            for i = filters_index, signals_count, 1 do set_signal(control, i, nil) end
-            state.prev_outputs = {} -- reset feedback when all circuit inputs disappear
-            return
-        end
-        local max_index = math.max(signals_count + 1, table_size(signals) + filters_index)
-        local prev_outputs = {}
-        ---@type LogisticFilter | nil
-        local filter_signal
-        for i = 1, max_index - filters_index, 1 do
-            local prev_signal = get_signal(control, filters_index + i - 1)
-            if prev_signal and prev_signal.value ~= nil then
-                prev_outputs[prev_signal.value.name] = prev_signal.min
-            end
-
-            if signals[i] ~= nil and signals[i].signal.name ~= nil and signals[i].signal.type ~= "virtual" then
-                filter_signal = {value={
-                    name=signals[i].signal.name,
-                    type=signals[i].signal.type or "item",
-                    quality="normal", comparator="="}}
-                filter_signal.min = counts[signals[i].signal.name] or 0 -- unreported entities have no energy flow
-            else
-                filter_signal = nil
-            end
-            set_signal(control, filters_index + i - 1, filter_signal)
-        end
-        state.prev_outputs = prev_outputs
-end
 
 ---@param state ECombState
 ---@param tick integer
@@ -300,9 +160,9 @@ local function write(state, tick, modes)
         details.method = "disabled"
         return toggle_light(state, false)
     end
-    local signal = default_signal(control, DEFAULT_F)
+    local signal = circuit_slots.ensure_factor(control)
     alt_units.sync(state, signal.min)
-    local filters = get_filters(state)
+    local filters = mk2_filters.read(state, features.filter[state.entity.name])
     details.filter_count = filters and #filters or 0
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
@@ -338,13 +198,9 @@ local function write(state, tick, modes)
         input_diff,output_diff,maxin,maxout = 0, 0, 0, 0 -- don't show anything
     end
     toggle_light(state, enabled)
-    set_signal(control, DEFAULT_F.index, {value=F, min=signal.min}) -- preserve user-defined scaling
-    set_signal(control, 2, {value=I, min= input_diff})
-    set_signal(control, 3, {value=O, min=output_diff})
-    set_signal(control, 4, {value=C, min=maxin })
-    set_signal(control, 5, {value=P, min=maxout})
+    circuit_slots.write_power(control, signal.min, input_diff, output_diff, maxin, maxout)
     if features.filter[state.entity.name] then
-        write_filters_count(state, counts)
+        circuit_slots.write_filter_counts(state, counts)
     end
 end
 
@@ -356,7 +212,7 @@ local function alloc(entity)
         local state = State(entity)
         if not state then return end
         storage.state[entity.unit_number] = state
-        local factor_slot = get_signal(state.control, DEFAULT_F.index)
+        local factor_slot = circuit_slots.get(state.control, 1)
         alt_units.sync(state, factor_slot and factor_slot.min or 3)
         local registration = script.register_on_object_destroyed(entity)
         state.registration = registration
@@ -476,14 +332,11 @@ script.on_event(defines.events.on_gui_opened, function(event)
     energy_gui.open(player, storage.state[entity.unit_number])
 end)
 
--- Own the one authoritative writer for the circuit scaling factor (slot 1).
+-- Only circuit_slots.lua writes scaling factor in the native circuit section.
 local function apply_gui_factor(state, factor)
-    local section = state.control.sections[1]
-    local slot = section.get_slot(DEFAULT_F.index)
-    if not slot or not slot.value or slot.value.name ~= F.name then return end
-    slot.min = factor
-    section.set_slot(DEFAULT_F.index, slot)
-    alt_units.sync(state, factor)
+    if circuit_slots.apply_factor(state.control, factor) then
+        alt_units.sync(state, factor)
+    end
 end
 
 script.on_event(defines.events.on_gui_click, function(event)
@@ -499,7 +352,7 @@ script.on_event(defines.events.on_gui_closed, energy_gui.on_closed)
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     if event.setting == "energy-combinator-show-alt-units" then
         alt_units.rebuild(storage.state, function(state)
-            local slot = get_signal(state.control, DEFAULT_F.index)
+            local slot = circuit_slots.get(state.control, 1)
             return slot and slot.min or 3
         end)
     end
