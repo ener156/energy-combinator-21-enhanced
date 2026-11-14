@@ -197,7 +197,7 @@ eq(no_wire_mk2.control.outputs[2],0,"attaching filter wire rebases first filtere
 eq(no_wire_mk2.diagnostics.method,"statistics","wired MK2 remains filter-driven")
 sample.input=20050000
 meter.write(no_wire_mk2,25,modes,true)
-eq(no_wire_mk2.control.outputs[2],6000,"subsequent wired MK2 sample measures filter only")
+eq(no_wire_mk2.control.outputs[2],60000,"subsequent wired MK2 sample measures filter only")
 filters=nil
 meter.write(no_wire_mk2,30,modes,true)
 eq(no_wire_mk2.control.outputs[2],7000,"unplugging filter wire restores full power immediately")
