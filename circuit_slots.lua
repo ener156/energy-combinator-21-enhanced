@@ -106,39 +106,60 @@ function M.apply_factor(control, factor)
 end
 
 ---@param state ECombState
----@param counts table<string,integer>
-function M.write_filter_counts(state, counts)
+local function clear_filter_counts(state)
     local control = state.control
-    local signals = control.entity.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
-        local signals_count = control.sections[1].filters_count
-        local filters_index = 6
-        if signals == nil then
-            for i = filters_index, signals_count, 1 do set_signal(control, i, nil) end
-            state.prev_outputs = {} -- reset feedback when all circuit inputs disappear
-            return
+    local section = control.sections[1]
+    if section then
+        for i = IDX, section.filters_count do
+            set_signal(control, i, nil)
         end
-        local max_index = math.max(signals_count + 1, table_size(signals) + filters_index)
-        local prev_outputs = {}
-        ---@type LogisticFilter | nil
-        local filter_signal
-        for i = 1, max_index - filters_index, 1 do
-            local prev_signal = get_signal(control, filters_index + i - 1)
-            if prev_signal and prev_signal.value ~= nil then
-                prev_outputs[prev_signal.value.name] = prev_signal.min
-            end
+    end
+    -- Feedback must not survive loss of the electric network or circuit wires.
+    -- Clearing the history also avoids interpreting the old feedback as inputs
+    -- after the network is reconnected.
+    state.prev_outputs = {}
+end
 
-            if signals[i] ~= nil and signals[i].signal.name ~= nil and signals[i].signal.type ~= "virtual" then
-                filter_signal = {value={
-                    name=signals[i].signal.name,
-                    type=signals[i].signal.type or "item",
-                    quality="normal", comparator="="}}
-                filter_signal.min = counts[signals[i].signal.name] or 0 -- unreported entities have no energy flow
-            else
-                filter_signal = nil
-            end
-            set_signal(control, filters_index + i - 1, filter_signal)
+---@param state ECombState
+---@param counts table<string,integer>
+---@param electric_connected boolean|nil
+function M.write_filter_counts(state, counts, electric_connected)
+    local control = state.control
+    -- A constant combinator can still report its own output signals even after
+    -- the external red/green wire is unplugged. Do not use get_signals() alone
+    -- to decide whether filter feedback may remain in native output slots.
+    if electric_connected == false or
+        (not control.get_circuit_network(defines.wire_connector_id.circuit_red) and
+         not control.get_circuit_network(defines.wire_connector_id.circuit_green)) then
+        return clear_filter_counts(state)
+    end
+    local signals = control.entity.get_signals(defines.wire_connector_id.circuit_red,
+        defines.wire_connector_id.circuit_green)
+    if signals == nil then
+        return clear_filter_counts(state)
+    end
+    local section = control.sections[1]
+    local max_index = math.max(section.filters_count + 1, table_size(signals) + IDX)
+    local prev_outputs = {}
+    for i = 1, max_index - IDX do
+        local index = IDX + i - 1
+        local prev_signal = get_signal(control, index)
+        if prev_signal and prev_signal.value then
+            prev_outputs[prev_signal.value.name] = prev_signal.min
         end
-        state.prev_outputs = prev_outputs
+        local received = signals[i]
+        local feedback
+        if received and received.signal and received.signal.name and
+            received.signal.type ~= "virtual" then
+            feedback = {value = {
+                name = received.signal.name,
+                type = received.signal.type or "item",
+                quality = "normal", comparator = "="},
+                min = counts[received.signal.name] or 0}
+        end
+        set_signal(control, index, feedback)
+    end
+    state.prev_outputs = prev_outputs
 end
 
 M.get = get_signal
