@@ -33,9 +33,9 @@ package.loaded["alt_units"] = {
 }
 
 local sensors = {}
-local function make_meter(name)
+local function make_meter(name, position)
     sensor_creations = sensor_creations + 1
-    local meter={name=name, valid=true}
+    local meter={name=name, position=position, valid=true}
     function meter.get_circuit_network(_) return nil end
     function meter.get_wire_connector(_, _)
         return {connect_to=function(_, _, _) wire_count=wire_count+1 end}
@@ -55,16 +55,17 @@ function surface.find_entities_filtered(options)
     if type(options.name)=="table" then return entities end
     local found={}
     for _,sensor in ipairs(sensors) do
-        if sensor.valid and sensor.name==options.name then
+        if sensor.valid and sensor.name==options.name
+            and sensor.position.x==options.position.x then
             found[#found+1]=sensor
         end
     end
     return found
 end
-function surface.create_entity(options) return make_meter(options.name) end
+function surface.create_entity(options) return make_meter(options.name, options.position) end
 
 local function make_entity(id, name)
-    local combinator={unit_number=id, name=name, prototype={name=name},surface=surface, position={x=0,y=0},force="player"}
+    local combinator={unit_number=id, name=name, prototype={name=name},surface=surface, position={x=id,y=0},force="player"}
     function combinator.get_or_create_control_behavior() return {} end
     return combinator
 end
