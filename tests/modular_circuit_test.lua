@@ -62,6 +62,11 @@ eq(slots[1].min, 99, "unrelated slot remains intact")
 
 local circuit, output, section=behavior()
 slots_module.initialize(circuit, true)
+-- Feedback is emitted only when an actual external circuit wire exists.
+-- The mock must model that wire, not merely return item signals.
+circuit.get_circuit_network=function(id)
+    return id==defines.wire_connector_id.circuit_red and {} or nil
+end
 section.filters_count=7
 output[6]={value={name="radar",type="item"},min=1}
 output[7]={value={name="solar-panel",type="item"},min=2}
