@@ -272,7 +272,7 @@ function M.open(player, state)
         local configuration = mk2_modes.get(entity.unit_number)
         local filters = columns.add{type="frame", name="ec_filter_settings_panel", direction="vertical",
             style="inside_shallow_frame_with_padding"}
-        filters.style.minimal_width = 420
+        filters.style.minimal_width = 490
         filters.add{type="label", caption=caption_key("mk2-mode-title"),
             style="heading_2_label"}
         local selector = filters.add{type="drop-down", name="ec_mk2_mode",
@@ -302,7 +302,7 @@ function M.open(player, state)
             direction="vertical",
         }
         manual_scroll.style.maximal_height = 240
-        manual_scroll.style.minimal_width = 400
+        manual_scroll.style.minimal_width = 465
         manual_scroll.add{type="flow", name="ec_mk2_filter_list", direction="vertical"}
     end
 
@@ -362,16 +362,18 @@ local function update_manual_list(player, frame, config)
         local quality_ids, quality_labels = quality_options()
         for i, name in ipairs(config.filters) do
             local line = list.add{type="flow", direction="horizontal"}
+            line.style.horizontal_spacing = 4
             local prototype = prototypes.entity[name]
             local caption = prototype and prototype.localised_name or name
             local label = line.add{type="label",
                 caption={"", "[entity=" .. name .. "] ", caption}}
-            label.style.minimal_width = 192
-            label.style.maximal_width = 215
+            label.style.minimal_width = 170
+            label.style.maximal_width = 185
+            label.style.single_line = false
             local selected = (config.qualities and config.qualities[name]) or "all"
             local quality = line.add{type="drop-down", name="ec_mk2_quality_" .. i,
                 items=quality_labels, selected_index=quality_index(selected, quality_ids)}
-            quality.style.minimal_width = 135
+            quality.style.width = 145
             line.add{type="button", name="ec_mk2_remove_" .. i,
                 caption=caption_key("mk2-manual-remove")}
         end
