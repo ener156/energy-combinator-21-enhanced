@@ -7,6 +7,7 @@ local function eq(actual, expected, label)
         ("%s: expected %s, got %s"):format(label, tostring(expected), tostring(actual)))
 end
 
+storage = {}
 defines = {wire_connector_id={circuit_red=1,circuit_green=2}}
 function table_size(t)
     local n=0
@@ -106,13 +107,13 @@ filter_control.entity.get_signals=function()
     return {{signal={name="radar",type="item"},count=2},
             {signal={name="solar-panel",type="item"},count=1}}
 end
-local read_state={control=filter_control,prev_outputs={radar=1,["solar-panel"]=1}}
+local read_state={entity={unit_number=500},control=filter_control,prev_outputs={radar=1,["solar-panel"]=1}}
 local selected=reader.read(read_state,true)
 eq(#selected, 1, "only one selected item exceeds feedback threshold")
 eq(selected[1], "radar", "radar remains selected")
 eq(reader.read(read_state,false),nil,"MK1 reads no MK2 filter selection")
 filter_control.entity.get_signals=function() return nil end
-eq(#reader.read(read_state,true),0,"MK2 with connected circuit but no incoming signals has zero selected filters")
+eq(reader.read(read_state,true),nil,"AUTO with connected circuit but no incoming signals measures full grid")
 filter_control.get_circuit_network=function() return nil end
 eq(reader.read(read_state,true),nil,"MK2 with no red or green circuit wire selects full unfiltered network")
 print("EC_MODULAR_CIRCUIT_LUA_TEST=PASS")
