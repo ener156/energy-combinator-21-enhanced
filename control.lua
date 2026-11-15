@@ -82,7 +82,13 @@ script.on_init(init)
 script.on_configuration_changed(init)
 
 script.on_event(events.entity.added, function (event)
-    combinator_state.allocate(event.entity, MK, features.filter)
+    local entity = event.entity
+    combinator_state.allocate(entity, MK, features.filter)
+    -- Factorio forwards per-blueprint entity tags on actual placement and
+    -- robot revival; the settings must be restored for the NEW unit number.
+    if entity and entity.valid and entity.name == MK2 and event.tags then
+        mk2_modes.import(entity.unit_number, event.tags.ecmod9_mk2)
+    end
 end)
 script.on_event(events.entity.removed, function (event)
     combinator_state.cleanup_registration(event.registration_number)
@@ -93,6 +99,65 @@ script.on_event(defines.events.on_entity_cloned, function(event)
     if not (source and source.valid and destination and destination.valid
             and source.name == MK2 and destination.name == MK2) then return end
     mk2_modes.clone(source.unit_number, destination.unit_number)
+end)
+
+-- Shift+right/left entity settings copy must also copy the MK2's
+-- per-unit persisted manual filters, not just vanilla constant slots.
+script.on_event(defines.events.on_entity_settings_pasted, function(event)
+    local source, destination = event.source, event.destination
+    if source and destination and source.valid and destination.valid and
+        source.name == MK2 and destination.name == MK2 then
+        mk2_modes.clone(source.unit_number, destination.unit_number)
+    end
+end)
+
+-- Portable blueprint payload: names and mode are stored on the blueprint
+-- entity itself; storage unit numbers must never be serialized into a stamp.
+local pending_blueprints = {}
+
+local function write_blueprint_tags(blueprint, mapping)
+    if not blueprint or not mapping then return false end
+    if not blueprint.is_blueprint_setup() then return false end
+    for index, entity in pairs(mapping) do
+        if entity and entity.valid and entity.name == MK2 then
+            blueprint.set_blueprint_entity_tag(index, "ecmod9_mk2",
+                mk2_modes.export(entity.unit_number))
+        end
+    end
+    return true
+end
+
+script.on_event(defines.events.on_player_setup_blueprint, function(event)
+    if not event.mapping or not event.mapping.valid then return end
+    local mapping = event.mapping.get()
+    local player = game.get_player(event.player_index)
+    local blueprint = event.stack or event.record or
+        (player and (player.blueprint_to_setup or player.cursor_stack))
+    if write_blueprint_tags(blueprint, mapping) then
+        pending_blueprints[event.player_index] = nil
+    else
+        -- The interactive blueprint confirmation window may be unfinished
+        -- while the selection event fires. Finish at confirm time instead.
+        pending_blueprints[event.player_index] = mapping
+    end
+end)
+
+script.on_event(defines.events.on_player_configured_blueprint, function(event)
+    local mapping = pending_blueprints[event.player_index]
+    pending_blueprints[event.player_index] = nil
+    if not mapping then return end
+    local player = game.get_player(event.player_index)
+    if not player then return end
+    local blueprint = player.blueprint_to_setup or player.cursor_stack
+    write_blueprint_tags(blueprint, mapping)
+end)
+
+-- Factorio 2.1 raises this for stamping a blueprint over existing entities.
+script.on_event(defines.events.on_blueprint_settings_pasted, function(event)
+    local entity = event.entity
+    if entity and entity.valid and entity.name == MK2 and event.tags then
+        mk2_modes.import(entity.unit_number, event.tags.ecmod9_mk2)
+    end
 end)
 
 -- Hover over a combinator and press the configurable shortcut to open its vanilla GUI.
