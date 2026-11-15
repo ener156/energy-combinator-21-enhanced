@@ -9,6 +9,7 @@ local filter_baseline = require "filter_baseline"
 local circuit_slots = require "circuit_slots"
 local meter_sensors = require "meter_sensors"
 local mk2_filters = require "mk2_filters"
+local mk2_modes = require "mk2_modes"
 
 local M = {}
 local INT32_MAX = 2^31
@@ -75,7 +76,15 @@ function M.write(state, tick, modes, is_mk2)
             maximum_consumption = 0, maximum_production = 0,
         }
         circuit_slots.write_power(control, signal.min, 0, 0, 0, 0)
-        if is_mk2 then circuit_slots.write_filter_counts(state, {}, false) end
+        if is_mk2 then
+            local configuration = mk2_modes.get(state.entity.unit_number)
+            if configuration.mode == 'manual' then
+                circuit_slots.write_manual_preview(state,
+                    mk2_modes.valid_manual_filters(state.entity.unit_number))
+            else
+                circuit_slots.write_filter_counts(state, {}, false)
+            end
+        end
         meter_sensors.set_light(state, false)
         return
     end
@@ -129,7 +138,10 @@ function M.write(state, tick, modes, is_mk2)
     if is_mk2 then
         -- Only AUTO with actual external filters generates circuit feedback.
         -- Manual modes must never echo the incoming circuit into filters.
-        if selected_mode == 'auto' and filters ~= nil then
+        if selected_mode == 'manual' then
+            circuit_slots.write_manual_preview(state,
+                mk2_modes.valid_manual_filters(state.entity.unit_number))
+        elseif selected_mode == 'auto' and filters ~= nil then
             circuit_slots.write_filter_counts(state, counts, details.connected)
         else
             circuit_slots.write_filter_counts(state, {}, false)
