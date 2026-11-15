@@ -75,6 +75,41 @@ function M.valid_manual_filters(id)
     return result
 end
 
+
+-- Blueprint/copy-paste payload contains only validated primitive values.
+-- Never persist a LuaEntity, unit number, GUI element, or prototype in tags.
+function M.export(id)
+    if not id then return nil end
+    local config = M.ensure(id)
+    local saved = {version=1, mode=config.mode, filters={}}
+    for _, name in ipairs(config.filters) do
+        if valid_energy(name) and #saved.filters < MAX_FILTERS then
+            saved.filters[#saved.filters+1] = name
+        end
+    end
+    return saved
+end
+
+function M.import(id, saved)
+    if not id or type(saved) ~= 'table' or saved.version ~= 1
+        or not VALID[saved.mode] or type(saved.filters) ~= 'table' then
+        return false
+    end
+    local config = {mode=saved.mode, filters={}}
+    for _, name in pairs(saved.filters) do
+        if valid_energy(name) and #config.filters < MAX_FILTERS then
+            local duplicate = false
+            for _, value in ipairs(config.filters) do
+                if value == name then duplicate = true; break end
+            end
+            if not duplicate then config.filters[#config.filters+1] = name end
+        end
+    end
+    table.sort(config.filters)
+    store()[id] = config
+    return true
+end
+
 function M.forget(id)
     if storage.mk2_modes then storage.mk2_modes[id] = nil end
 end
