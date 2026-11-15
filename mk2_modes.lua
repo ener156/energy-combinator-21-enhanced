@@ -76,37 +76,64 @@ function M.valid_manual_filters(id)
 end
 
 
--- Blueprint/copy-paste payload contains only validated primitive values.
--- Never persist a LuaEntity, unit number, GUI element, or prototype in tags.
-function M.export(id)
-    if not id then return nil end
-    local config = M.ensure(id)
-    local saved = {version=1, mode=config.mode, filters={}}
-    for _, name in ipairs(config.filters) do
-        if valid_energy(name) and #saved.filters < MAX_FILTERS then
-            saved.filters[#saved.filters+1] = name
+-- Portable, versioned MK2 data: only prototype names and primitive values.
+-- Native blueprint signal slots are authoritative when Factorio's parameter
+-- editor changes them. Mod tags are not modified by that editor.
+local function validated_names(names)
+    local clean, seen = {}, {}
+    if type(names) ~= 'table' then return clean end
+    for _, name in pairs(names) do
+        if valid_energy(name) and not seen[name] and #clean < MAX_FILTERS then
+            seen[name] = true
+            clean[#clean+1] = name
         end
     end
-    return saved
+    table.sort(clean)
+    return clean
 end
 
-function M.import(id, saved)
-    if not id or type(saved) ~= 'table' or saved.version ~= 1
-        or not VALID[saved.mode] or type(saved.filters) ~= 'table' then
+local function equal_names(a, b)
+    local left = validated_names(a)
+    local right = validated_names(b)
+    if #left ~= #right then return false end
+    for i, name in ipairs(left) do
+        if name ~= right[i] then return false end
+    end
+    return true
+end
+
+-- source_slots captures the exact native filter signal identities at
+-- blueprint creation. Factorio parameterization may replace those identities
+-- without replacing custom tags.
+function M.export(id, native_slots)
+    if not id then return nil end
+    local config = M.ensure(id)
+    return {
+        version=2,
+        mode=config.mode,
+        filters=validated_names(config.filters),
+        source_slots=validated_names(native_slots),
+    }
+end
+
+-- native_slots are read before the mod writes any new measurement output.
+-- A difference against the original blueprint's slot identities means the
+-- native parameter editor has changed (or deleted) the filter parameters.
+-- For older v1 blueprints the saved filter names are the baseline.
+function M.import(id, saved, native_slots)
+    if not id or type(saved) ~= 'table' or
+        (saved.version ~= 1 and saved.version ~= 2) or
+        not VALID[saved.mode] or type(saved.filters) ~= 'table' then
         return false
     end
-    local config = {mode=saved.mode, filters={}}
-    for _, name in pairs(saved.filters) do
-        if valid_energy(name) and #config.filters < MAX_FILTERS then
-            local duplicate = false
-            for _, value in ipairs(config.filters) do
-                if value == name then duplicate = true; break end
-            end
-            if not duplicate then config.filters[#config.filters+1] = name end
+    local filters = validated_names(saved.filters)
+    if saved.mode == 'manual' and native_slots ~= nil then
+        local source = saved.version == 2 and saved.source_slots or saved.filters
+        if type(source) == 'table' and not equal_names(native_slots, source) then
+            filters = validated_names(native_slots)
         end
     end
-    table.sort(config.filters)
-    store()[id] = config
+    store()[id] = {mode=saved.mode, filters=filters}
     return true
 end
 
