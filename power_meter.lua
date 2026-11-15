@@ -80,7 +80,8 @@ function M.write(state, tick, modes, is_mk2)
             local configuration = mk2_modes.get(state.entity.unit_number)
             if configuration.mode == 'manual' then
                 circuit_slots.write_manual_preview(state,
-                    mk2_modes.valid_manual_filters(state.entity.unit_number), {})
+                    mk2_modes.valid_manual_filters(state.entity.unit_number), {},
+                    mk2_modes.filter_qualities(state.entity.unit_number))
             else
                 circuit_slots.write_filter_counts(state, {}, false)
             end
@@ -88,7 +89,7 @@ function M.write(state, tick, modes, is_mk2)
         meter_sensors.set_light(state, false)
         return
     end
-    local filters, selected_mode = mk2_filters.read(state, is_mk2)
+    local filters, selected_mode, quality_filters = mk2_filters.read(state, is_mk2)
     details.filter_mode = selected_mode or 'all'
     details.filter_active = filters ~= nil and #filters > 0
     details.filter_count = filters and #filters or 0
@@ -96,6 +97,7 @@ function M.write(state, tick, modes, is_mk2)
     -- valid, externally detected energy prototypes; in MANUAL the selection.
     -- Never reuse old values after power loss or when disabled.
     details.filter_names = filters or {}
+    details.filter_qualities = quality_filters or {}
     if is_mk2 and filters == nil and state.filter_signature ~= nil then
         -- A filter cable was just removed. Start fresh unfiltered statistics
         -- and allow the MK1 direct network-flow path immediately below.
@@ -105,7 +107,7 @@ function M.write(state, tick, modes, is_mk2)
     end
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
-    local input, output, maxin, maxout, counts = electric_statistics.collect(state.net, state.sat, filters)
+    local input, output, maxin, maxout, counts = electric_statistics.collect(state.net, state.sat, filters, quality_filters)
     details.filter_counts = counts
     -- On the first sample after switching from normal-only statistics to
     -- quality-aware totals, rebase historical counters exactly once. Without
@@ -114,7 +116,7 @@ function M.write(state, tick, modes, is_mk2)
         state.input, state.output = input, output
         state.quality_stats_revision = 1
     end
-    filter_baseline.rebase_if_changed(state, filters, input, output)
+    filter_baseline.rebase_if_changed(state, filters, input, output, quality_filters)
     -- Keep existing cumulative inputs, building filters and capacity estimates authoritative.
     local input_diff = diff(input, state.input) * variance * scale
     local output_diff = diff(output, state.output) * variance * scale
@@ -152,7 +154,7 @@ function M.write(state, tick, modes, is_mk2)
         -- Manual modes must never echo the incoming circuit into filters.
         if selected_mode == 'manual' then
             circuit_slots.write_manual_preview(state,
-                mk2_modes.valid_manual_filters(state.entity.unit_number), counts)
+                mk2_modes.valid_manual_filters(state.entity.unit_number), counts, quality_filters)
         elseif selected_mode == 'auto' and filters ~= nil then
             circuit_slots.write_filter_counts(state, counts, details.connected)
         else
