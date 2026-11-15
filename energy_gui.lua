@@ -57,6 +57,26 @@ local function mk2_mode_index(value)
     return 1
 end
 
+local function get_factor(state)
+    if not state or not state.control or not state.control.valid then return 3 end
+    if state.control.sections_count == 0 then return 3 end
+    local filter = state.control.sections[1].get_slot(1)
+    return filter and filter.min or 3
+end
+
+local function find(element, wanted)
+    if element.name == wanted then return element end
+    for _, child in pairs(element.children) do
+        local found = find(child, wanted)
+        if found then return found end
+    end
+    return nil
+end
+
+local function caption_key(key)
+    return {"energy-combinator-gui." .. key}
+end
+
 -- Use Factorio's quality prototypes, including qualities added by other mods.
 -- "all" is the default for every existing building filter.
 local function quality_options()
@@ -94,25 +114,6 @@ local function quality_caption(quality)
         (quality == "normal" and caption_key("quality-normal") or quality)
 end
 
-local function get_factor(state)
-    if not state or not state.control or not state.control.valid then return 3 end
-    if state.control.sections_count == 0 then return 3 end
-    local filter = state.control.sections[1].get_slot(1)
-    return filter and filter.min or 3
-end
-
-local function find(element, wanted)
-    if element.name == wanted then return element end
-    for _, child in pairs(element.children) do
-        local found = find(child, wanted)
-        if found then return found end
-    end
-    return nil
-end
-
-local function caption_key(key)
-    return {"energy-combinator-gui." .. key}
-end
 
 -- Native tabs remain in use for selection, but their content widgets are
 -- deliberately empty. Real pages are siblings of the tabbed pane so the
