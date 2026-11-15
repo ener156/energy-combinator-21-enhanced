@@ -103,4 +103,21 @@ eq(input,100,"legacy normal consumption")
 eq(output,400,"legacy normal production")
 eq(maxin*60,300000,"legacy normal maximum consumption")
 eq(maxout*60,600000,"legacy normal maximum production")
+-- Regression from actual ECMOD22 user save: six legendary accumulators
+-- (180 MJ total storage, 6 * 750 kW discharge capacity) appear separately
+-- under accumulator charge in Factorio. They must not add 4.5 MW to MAX
+-- generation, though their real discharge and building count remain visible.
+prototypes.entity.accumulator = entity(750000, 750000, nil,
+    {legendary=750000}, "accumulator")
+flows["output:accumulator:legendary"] = 6
+stat.output_counts = {}
+stat.output_quality_counts = {legendary={accumulator=111}}
+input,output,maxin,maxout,counts=statistics.collect(net,sat,nil)
+eq(output,111,"legendary accumulator discharge still counted")
+eq(maxout,0,"six legendary accumulators do not add 4.5MW generation capacity")
+eq(counts.accumulator,6,"accumulator count still available to MK2")
+input,output,maxin,maxout,counts=statistics.collect(net,sat,{"accumulator"})
+eq(output,111,"filtered accumulator discharge still counted")
+eq(maxout,0,"filtered accumulator capacity excludes storage")
+eq(counts.accumulator,6,"filtered accumulator feedback count")
 print("EC_MODULAR_QUALITY_STATISTICS_LUA_TEST=PASS")
