@@ -139,6 +139,10 @@ function M.open(player, state)
     header.add{type="sprite-button", name="ec_close", sprite="utility/close", style="frame_action_button"}
 
     local tabs = frame.add{type="tabbed-pane", name="ec_tabs"}
+    -- The native tab selector has only empty content pages; explicitly stretch
+    -- its lower border across the same width as the real pages below.
+    tabs.style.horizontally_stretchable = true
+    tabs.style.minimal_width = 850
     local overview_tab = tabs.add{type="tab", caption=caption_key("overview")}
     tabs.add_tab(overview_tab, tabs.add{type="empty-widget"})
     local overview = frame.add{type="flow", name="ec_overview", direction="vertical"}
