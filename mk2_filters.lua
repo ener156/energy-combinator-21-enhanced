@@ -18,7 +18,7 @@ function M.read(state, is_mk2)
     if config.mode == 'all' then return nil, 'all' end
     if config.mode == 'manual' then
         local manual = mk2_modes.valid_manual_filters(state.entity.unit_number)
-        return #manual > 0 and manual or nil, 'manual'
+        return #manual > 0 and manual or nil, 'manual', mk2_modes.filter_qualities(state.entity.unit_number)
     end
     local control = state.control
     local connected_wire_count = (
