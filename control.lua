@@ -83,11 +83,17 @@ script.on_configuration_changed(init)
 
 script.on_event(events.entity.added, function (event)
     local entity = event.entity
-    combinator_state.allocate(entity, MK, features.filter)
-    -- Factorio forwards per-blueprint entity tags on actual placement and
-    -- robot revival; the settings must be restored for the NEW unit number.
+    -- Read blueprint signal identities BEFORE any initialization or output
+    -- write. Factorio applies parameter substitutions to native slots, not
+    -- to the mod's saved per-entity blueprint tags.
+    local native_filters
     if entity and entity.valid and entity.name == MK2 and event.tags then
-        mk2_modes.import(entity.unit_number, event.tags.ecmod9_mk2)
+        native_filters = circuit_slots.read_manual_filter_names(
+            entity.get_or_create_control_behavior())
+    end
+    combinator_state.allocate(entity, MK, features.filter)
+    if entity and entity.valid and entity.name == MK2 and event.tags then
+        mk2_modes.import(entity.unit_number, event.tags.ecmod9_mk2, native_filters)
     end
 end)
 script.on_event(events.entity.removed, function (event)
@@ -121,7 +127,9 @@ local function write_blueprint_tags(blueprint, mapping)
     for index, entity in pairs(mapping) do
         if entity and entity.valid and entity.name == MK2 then
             blueprint.set_blueprint_entity_tag(index, "ecmod9_mk2",
-                mk2_modes.export(entity.unit_number))
+                mk2_modes.export(entity.unit_number,
+                    circuit_slots.read_manual_filter_names(
+                        entity.get_or_create_control_behavior())))
         end
     end
     return true
@@ -156,7 +164,9 @@ end)
 script.on_event(defines.events.on_blueprint_settings_pasted, function(event)
     local entity = event.entity
     if entity and entity.valid and entity.name == MK2 and event.tags then
-        mk2_modes.import(entity.unit_number, event.tags.ecmod9_mk2)
+        mk2_modes.import(entity.unit_number, event.tags.ecmod9_mk2,
+            circuit_slots.read_manual_filter_names(
+                entity.get_or_create_control_behavior()))
     end
 end)
 
