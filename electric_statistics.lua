@@ -37,30 +37,33 @@ local function is_buggy(name)
        and prototype.type == 'electric-energy-interface' -- buggy as hell
 end
 
-local function max_consumption(name)
+local function max_consumption(name, quality)
     if name == 'power-combinator-meter-satisfaction' then return 0 end -- remove meter lamp from max consumption
     local prototype = prototypes.entity[name]
     if not prototype then return 0 end
     local source = prototype.electric_energy_source_prototype or {}
-    local usage  = prototype.get_max_energy_usage() or 0
+    local usage  = prototype.get_max_energy_usage(quality) or 0
     local drain  = source.drain or 0
     return usage + drain
 end
 
-local function max_production(name)
+local function max_production(name, quality)
     local  prototype = prototypes.entity[name]
-    return prototype and prototype.get_max_energy_production() or 0
+    return prototype and prototype.get_max_energy_production(quality) or 0
 end
 
 ---@param statistic LuaFlowStatistics
 ---@param name string
 ---@param category "'input'" | "'output'" | "'storage'"
-local function statistic_value(statistic, name, category)
+local function statistic_value(statistic, name, category, quality)
+    -- A bare prototype name is *normal* quality only. The quality-specific
+    -- ID is necessary for Factorio to count higher-quality entities.
+    local id = quality == "normal" and name or {name=name, quality=quality}
     return statistic.get_flow_count{
         precision_index = PRECISION_INDEX,
         category = category,
         count = true,
-        name  = name,
+        name  = id,
     }
 end
 
@@ -73,21 +76,34 @@ end
 local function sum_stats(statistic, category, filters)
     local is_input = category == "input"
     local sum, maxs, counts = 0, 0, {}
-    local f      = is_input and max_consumption or max_production
-    local values = is_input and statistic.input_counts or statistic.output_counts
+    local capacity = is_input and max_consumption or max_production
+    local normal_values = is_input and statistic.input_counts or statistic.output_counts
+    local by_quality = is_input and statistic.input_quality_counts or statistic.output_quality_counts
+
+    -- MK2 prototype filters apply to *all* qualities of the selected building.
+    local allowed
     if filters then
-        local filtered = {}
-        for _, filter in pairs(filters) do
-            filtered[filter] = values[filter]
-        end
-        values = filtered
+        allowed = {}
+        for _, name in pairs(filters) do allowed[name] = true end
     end
-    for name, value in pairs(values) do
-        if not is_buggy(name) then
-            local count = statistic_value(statistic, name, category)
-            counts[name] = (counts[name] or 0) + count
-            maxs = maxs + count * f(name)
-            sum  = sum  + value
+
+    local function accumulate(quality, values)
+        for name, value in pairs(values or {}) do
+            if (not allowed or allowed[name]) and not is_buggy(name) then
+                local count = statistic_value(statistic, name, category, quality)
+                counts[name] = (counts[name] or 0) + count
+                maxs = maxs + count * capacity(name, quality)
+                sum = sum + value
+            end
+        end
+    end
+
+    -- Prefer the explicit normal-quality bucket when available. Otherwise
+    -- retain the legacy unqualified table; do not count normal twice.
+    accumulate("normal", by_quality and by_quality.normal or normal_values)
+    if by_quality then
+        for quality, values in pairs(by_quality) do
+            if quality ~= "normal" then accumulate(quality, values) end
         end
     end
     return sum, maxs, counts
