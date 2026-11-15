@@ -4,6 +4,7 @@ local energy_gui = require "energy_gui"
 local circuit_slots = require "circuit_slots"
 local power_meter = require "power_meter"
 local combinator_state = require "combinator_state"
+local mk2_modes = require "mk2_modes"
 
 local MK1 = common.prototype_prefix .. "power-combinator"
 local MK2 = common.prototype_prefix .. "power-combinator-MK2"
@@ -49,6 +50,7 @@ local function init()
     alt_units.reset()
     for _, player in pairs(game.players) do energy_gui.close(player) end
     storage.energy_gui_context = {}
+    storage.energy_gui_filter_signatures = {}
     combinator_state.rebuild({MK1,MK2}, MK, features.filter)
 end
 
@@ -84,6 +86,13 @@ script.on_event(events.entity.added, function (event)
 end)
 script.on_event(events.entity.removed, function (event)
     combinator_state.cleanup_registration(event.registration_number)
+end)
+
+script.on_event(defines.events.on_entity_cloned, function(event)
+    local source, destination = event.source, event.destination
+    if not (source and source.valid and destination and destination.valid
+            and source.name == MK2 and destination.name == MK2) then return end
+    mk2_modes.clone(source.unit_number, destination.unit_number)
 end)
 
 -- Hover over a combinator and press the configurable shortcut to open its vanilla GUI.
@@ -129,6 +138,9 @@ script.on_event(defines.events.on_gui_click, function(event)
 end)
 script.on_event(defines.events.on_gui_selection_state_changed, function(event)
     energy_gui.handle_selection(event, storage.state)
+end)
+script.on_event(defines.events.on_gui_elem_changed, function(event)
+    energy_gui.handle_elem_changed(event, storage.state)
 end)
 script.on_event(defines.events.on_gui_checked_state_changed, function(event)
     energy_gui.handle_checked(event, storage.state)
