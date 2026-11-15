@@ -101,6 +101,51 @@ function M.write_power(control, factor, input_diff, output_diff, maxin, maxout)
     set_signal(control, 5, {value=P, min=maxout})
 end
 
+-- Storage signals live in a dedicated logistic section, not fixed slots 6+
+-- in section 1: MK2 uses those slots for up to 32 native filter-feedback items.
+local STORAGE_ENERGY = {type="virtual", quality="normal", comparator="=",
+    name="power-accumulator-energy"}
+local STORAGE_CAPACITY = {type="virtual", quality="normal", comparator="=",
+    name="power-accumulator-capacity"}
+
+local function storage_section(control, create)
+    -- Search by unique signal identity so native blueprints and user-added
+    -- sections can reorder the sections without losing the storage outputs.
+    for i = 2, control.sections_count do
+        local section = control.sections[i]
+        for slot = 1, math.min(section.filters_count, 2) do
+            local filter = section.get_slot(slot)
+            local name = filter and filter.value and filter.value.name
+            if name == STORAGE_ENERGY.name or name == STORAGE_CAPACITY.name then
+                return section
+            end
+        end
+    end
+    if create then return control.add_section() end
+    return nil
+end
+
+function M.write_storage(control, stored_joules, capacity_joules)
+    local section = storage_section(control, true)
+    if not section then return false end
+    section.set_slot(1, {value=STORAGE_ENERGY, min=stored_joules})
+    section.set_slot(2, {value=STORAGE_CAPACITY, min=capacity_joules})
+    return true
+end
+
+function M.read_storage(control, name)
+    if not control or not control.valid then return nil end
+    local section = storage_section(control, false)
+    if not section then return nil end
+    for i = 1, 2 do
+        local filter = section.get_slot(i)
+        if filter and filter.value and filter.value.name == name then
+            return filter.min or 0
+        end
+    end
+    return nil
+end
+
 function M.apply_factor(control, factor)
     local section = control.sections[1]
     local slot = section.get_slot(DEFAULT_F.index)
