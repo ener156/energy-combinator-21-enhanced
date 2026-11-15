@@ -57,6 +57,43 @@ local function mk2_mode_index(value)
     return 1
 end
 
+-- Use Factorio's quality prototypes, including qualities added by other mods.
+-- "all" is the default for every existing building filter.
+local function quality_options()
+    local values, captions = {"all"}, {caption_key("quality-all")}
+    local ordered = {}
+    for name, prototype in pairs(prototypes.quality or {}) do
+        ordered[#ordered + 1] = {name=name, prototype=prototype}
+    end
+    table.sort(ordered, function(a, b)
+        local al, bl = a.prototype.level or 0, b.prototype.level or 0
+        return al == bl and a.name < b.name or al < bl
+    end)
+    for _, item in ipairs(ordered) do
+        values[#values + 1] = item.name
+        captions[#captions + 1] = item.prototype.localised_name or item.name
+    end
+    -- Compatibility with unmodified/minimal prototype tables in tests.
+    if #values == 1 then
+        values[2], captions[2] = "normal", caption_key("quality-normal")
+    end
+    return values, captions
+end
+
+local function quality_index(quality, options)
+    for i, name in ipairs(options) do
+        if name == (quality or "all") then return i end
+    end
+    return 1
+end
+
+local function quality_caption(quality)
+    if not quality then return caption_key("quality-all") end
+    local proto = prototypes.quality and prototypes.quality[quality]
+    return proto and proto.localised_name or
+        (quality == "normal" and caption_key("quality-normal") or quality)
+end
+
 local function get_factor(state)
     if not state or not state.control or not state.control.valid then return 3 end
     if state.control.sections_count == 0 then return 3 end
@@ -249,6 +286,9 @@ function M.open(player, state)
         filters.add{type="label", name="ec_mk2_manual_inactive", caption=""}
         local manual = filters.add{type="flow", name="ec_mk2_manual", direction="vertical"}
         manual.add{type="label", caption=caption_key("mk2-manual-title")}
+        local quality_hint = manual.add{type="label", caption=caption_key("mk2-quality-help")}
+        quality_hint.style.single_line = false
+        quality_hint.style.maximal_width = 400
         local add = manual.add{type="flow", direction="horizontal"}
         add.add{type="choose-elem-button", name="ec_mk2_add_entity", elem_type="entity"}
         local pick_help = add.add{type="label", caption=caption_key("mk2-manual-add-help")}
@@ -310,17 +350,27 @@ end
 local function update_manual_list(player, frame, config)
     local list = find(frame, "ec_mk2_filter_list")
     if not list then return end
-    local signature = table.concat(config.filters, "\n")
+    local signature_parts = {}
+    for _, name in ipairs(config.filters) do
+        signature_parts[#signature_parts + 1] =
+            name .. "@" .. ((config.qualities and config.qualities[name]) or "all")
+    end
+    local signature = table.concat(signature_parts, "\n")
     if gui_filter_signatures()[player.index] ~= signature then
         list.clear()
+        local quality_ids, quality_labels = quality_options()
         for i, name in ipairs(config.filters) do
             local line = list.add{type="flow", direction="horizontal"}
             local prototype = prototypes.entity[name]
             local caption = prototype and prototype.localised_name or name
             local label = line.add{type="label",
                 caption={"", "[entity=" .. name .. "] ", caption}}
-            label.style.minimal_width = 240
-            label.style.maximal_width = 265
+            label.style.minimal_width = 192
+            label.style.maximal_width = 215
+            local selected = (config.qualities and config.qualities[name]) or "all"
+            local quality = line.add{type="drop-down", name="ec_mk2_quality_" .. i,
+                items=quality_labels, selected_index=quality_index(selected, quality_ids)}
+            quality.style.minimal_width = 135
             line.add{type="button", name="ec_mk2_remove_" .. i,
                 caption=caption_key("mk2-manual-remove")}
         end
@@ -362,15 +412,24 @@ local function update_filter_overview(player, frame, state, config, details)
     value(frame, "ec_overview_filter_scope",
         {"energy-combinator-gui.overview-filter-scope", scope})
 
-    local signature = config.mode .. ":" .. table.concat(names, "\n")
+    local signature_parts = {}
+    for _, name in ipairs(names) do
+        local quality = config.mode == "manual" and
+            config.qualities and config.qualities[name] or nil
+        signature_parts[#signature_parts + 1] = name .. "@" .. (quality or "all")
+    end
+    local signature = config.mode .. ":" .. table.concat(signature_parts, "\n")
     if gui_overview_signatures()[player.index] ~= signature then
         list.clear()
         for i, name in ipairs(names) do
             local line = list.add{type="flow", direction="horizontal"}
             local prototype = prototypes.entity[name]
+            local quality = config.mode == "manual" and
+                config.qualities and config.qualities[name] or nil
             local name_label = line.add{type="label", caption={
                 "", "[entity=" .. name .. "] ",
                 prototype and prototype.localised_name or name,
+                " (", quality_caption(quality), ")",
             }}
             name_label.style.minimal_width = 585
             line.add{type="label", name="ec_overview_filter_count_" .. i, caption="—"}
@@ -527,6 +586,20 @@ function M.handle_selection(event, states)
     local frame = player and player.gui.screen[ROOT]
     local id = player and gui_context()[player.index]
     if not frame or not frame.valid or not states[id] then return end
+    local quality_row = tonumber(element.name:match("^ec_mk2_quality_(%d+)$"))
+    if quality_row and find(frame, element.name) == element then
+        local state = states[id]
+        if not state.entity or not state.entity.valid then return end
+        local config = mk2_modes.get(id)
+        local name = config.mode == "manual" and config.filters[quality_row]
+        local choices = quality_options()
+        local quality = choices[element.selected_index]
+        if name and quality and mk2_modes.set_filter_quality(id, name, quality) then
+            gui_filter_signatures()[player.index] = nil
+            M.refresh(player, state)
+        end
+        return
+    end
     if element.name == 'ec_mk2_mode' and find(frame, 'ec_mk2_mode') == element then
         local state = states[id]
         if state.entity and state.entity.valid then
