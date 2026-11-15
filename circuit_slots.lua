@@ -162,6 +162,28 @@ function M.write_filter_counts(state, counts, electric_connected)
     state.prev_outputs = prev_outputs
 end
 
+
+-- Informational mirror for filters configured in the dedicated MK2 GUI.
+-- Count zero is deliberate: it keeps prototypes visible in the native
+-- constant-combinator window without exporting new circuit input signals.
+-- Auto feedback remains exclusively owned by write_filter_counts().
+function M.write_manual_preview(state, names)
+    local control = state.control
+    if control.sections_count == 0 then control.add_section() end
+    local section = control.sections[1]
+    local stop = math.max(section.filters_count, IDX + #names - 1)
+    for index = IDX, stop do
+        local name = names[index - IDX + 1]
+        local preview
+        if name then
+            preview = {value={name=name, type="item",
+                quality="normal", comparator="="}, min=0}
+        end
+        set_signal(control, index, preview)
+    end
+    state.prev_outputs = {}
+end
+
 M.get = get_signal
 M.ensure_factor = function(control) return default_signal(control, DEFAULT_F) end
 M.factor_signal = F
