@@ -41,6 +41,9 @@ local function max_consumption(name, quality)
     if name == 'power-combinator-meter-satisfaction' then return 0 end -- remove meter lamp from max consumption
     local prototype = prototypes.entity[name]
     if not prototype then return 0 end
+    -- Accumulator charging is storage transfer, not installed machine demand.
+    -- Only remove the estimated maximum; measured charging stays visible.
+    if prototype.type == "accumulator" then return 0 end
     local source = prototype.electric_energy_source_prototype or {}
     local usage  = prototype.get_max_energy_usage(quality) or 0
     local drain  = source.drain or 0
