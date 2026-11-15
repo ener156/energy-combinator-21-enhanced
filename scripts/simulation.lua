@@ -2,12 +2,13 @@
 -- This file is executed as a simulation init command, not as control.lua.
 -- Keep the scene independent of technologies, inventories, robots and
 -- obsolete 1.x constant-combinator signal methods.
-local surface = game.surfaces[1]
-if not surface then return end
+local function build_demo()
+    local surface = game.surfaces[1]
+    if not surface then return false end
 
-local force = game.forces.player
-surface.daytime = 0
-surface.freeze_daytime = true
+    local force = game.forces.player
+    surface.daytime = 0
+    surface.freeze_daytime = true
 
 -- Only place prototypes provided by the active simulation mod set.
 -- Tips simulations need not include the player's other installed mods.
@@ -37,6 +38,13 @@ for _, position in ipairs(producers) do
     place("solar-panel", position[1], position[2])
 end
 
--- In this view the combintors report the net's normal four power signals.
--- MK2 remains in its automatic default: without external filter signals it
--- measures the full electric network, just like MK1.
+    -- Both combinators now report the four power signals from one network.
+    -- Without an external filter, MK2 defaults to measuring the full grid.
+    return mk1 ~= nil and mk2 ~= nil and pole ~= nil and radar ~= nil
+end
+
+-- Tip init_file runs in a simulation console and builds the scene immediately.
+-- Requiring the module from a headless test has no side effects: the same
+-- function can be invoked explicitly to test the real scene definition.
+if game and game.simulation then build_demo() end
+return build_demo
