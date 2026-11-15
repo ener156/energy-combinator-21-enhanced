@@ -92,6 +92,10 @@ function M.write(state, tick, modes, is_mk2)
     details.filter_mode = selected_mode or 'all'
     details.filter_active = filters ~= nil and #filters > 0
     details.filter_count = filters and #filters or 0
+    -- Read-only snapshot for the overview GUI. In AUTO this is the list of
+    -- valid, externally detected energy prototypes; in MANUAL the selection.
+    -- Never reuse old values after power loss or when disabled.
+    details.filter_names = filters or {}
     if is_mk2 and filters == nil and state.filter_signature ~= nil then
         -- A filter cable was just removed. Start fresh unfiltered statistics
         -- and allow the MK1 direct network-flow path immediately below.
@@ -102,6 +106,7 @@ function M.write(state, tick, modes, is_mk2)
     local scale = 10 ^ -signal.min
     local variance = 60 / (tick - state.tick)
     local input, output, maxin, maxout, counts = electric_statistics.collect(state.net, state.sat, filters)
+    details.filter_counts = counts
     filter_baseline.rebase_if_changed(state, filters, input, output)
     -- Keep existing cumulative inputs, building filters and capacity estimates authoritative.
     local input_diff = diff(input, state.input) * variance * scale
