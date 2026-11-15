@@ -34,11 +34,29 @@ end
 
 ---@param a LuaEntity
 ---@param b LuaEntity
--- Sensors have no red/green circuit connectors. Their electrical
--- satisfaction/network sampling uses the physical power network only.
--- Keep this delegate because state and meter owners call it on updates.
-local function connect_wires(a, b)
-    return nil
+-- Even poles whose prototype has no red/green anchor can expose a
+-- generic connector in Factorio 2.1. Player wires attached to the invisible
+-- meter must be removed. Never touch copper/electricity or parent combinator
+-- circuits; these two hidden sensor entities are the only cleanup targets.
+local function strip_hidden_circuits(entity)
+    if not (entity and entity.valid) then return end
+    for _, id in ipairs{
+        defines.wire_connector_id.circuit_red,
+        defines.wire_connector_id.circuit_green,
+    } do
+        local connector = entity.get_wire_connector(id, false)
+        if connector and connector.connection_count > 0 then
+            connector.disconnect_all(defines.wire_origin.player)
+            -- No internal circuit links are needed anymore; remove legacy
+            -- invisible links left by earlier ECMOD versions as well.
+            connector.disconnect_all(defines.wire_origin.script)
+        end
+    end
+end
+
+local function connect_wires(satisfaction, network)
+    strip_hidden_circuits(satisfaction)
+    strip_hidden_circuits(network)
 end
 
 local function toggle_light(state, value)
