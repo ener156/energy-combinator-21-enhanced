@@ -80,7 +80,7 @@ function M.write(state, tick, modes, is_mk2)
             local configuration = mk2_modes.get(state.entity.unit_number)
             if configuration.mode == 'manual' then
                 circuit_slots.write_manual_preview(state,
-                    mk2_modes.valid_manual_filters(state.entity.unit_number))
+                    mk2_modes.valid_manual_filters(state.entity.unit_number), {})
             else
                 circuit_slots.write_filter_counts(state, {}, false)
             end
@@ -140,7 +140,7 @@ function M.write(state, tick, modes, is_mk2)
         -- Manual modes must never echo the incoming circuit into filters.
         if selected_mode == 'manual' then
             circuit_slots.write_manual_preview(state,
-                mk2_modes.valid_manual_filters(state.entity.unit_number))
+                mk2_modes.valid_manual_filters(state.entity.unit_number), counts)
         elseif selected_mode == 'auto' and filters ~= nil then
             circuit_slots.write_filter_counts(state, counts, details.connected)
         else
