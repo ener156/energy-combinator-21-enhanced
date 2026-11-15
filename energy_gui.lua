@@ -289,14 +289,25 @@ function M.handle_click(event, states, apply_factor, open_native)
     local element = event.element
     if not element or not element.valid then return end
     local name = element.name
+    local remove_index = tonumber(name:match("^ec_mk2_remove_(%d+)$"))
     if name ~= "ec_close" and name ~= "ec_close_bottom"
-       and name ~= "ec_open_native" and name ~= "ec_apply_factor" then return end
+       and name ~= "ec_open_native" and name ~= "ec_apply_factor"
+       and not remove_index then return end
     local player = game.get_player(event.player_index)
     if not player then return end
     local unit_number = gui_context()[player.index]
     if not unit_number then return end
     local state = states[unit_number]
-    if name == "ec_close" or name == "ec_close_bottom" then
+    if remove_index then
+        if state and state.entity and state.entity.valid then
+            local config = mk2_modes.get(state.entity.unit_number)
+            if config.mode == 'manual' and config.filters[remove_index] then
+                mk2_modes.remove_filter(state.entity.unit_number, config.filters[remove_index])
+                gui_filter_signatures()[player.index] = nil
+                M.refresh(player, state)
+            end
+        end
+    elseif name == "ec_close" or name == "ec_close_bottom" then
         M.close(player)
     elseif name == "ec_open_native" then
         if state and state.entity and state.entity.valid then
@@ -327,6 +338,16 @@ function M.handle_selection(event, states)
     local frame = player and player.gui.screen[ROOT]
     local id = player and gui_context()[player.index]
     if not frame or not frame.valid or not states[id] then return end
+    if element.name == 'ec_mk2_mode' and find(frame, 'ec_mk2_mode') == element then
+        local state = states[id]
+        if state.entity and state.entity.valid then
+            local mode = MK2_MODES[element.selected_index]
+            if mode and mk2_modes.set_mode(state.entity.unit_number, mode) then
+                M.refresh(player, state)
+            end
+        end
+        return
+    end
     for _, item in ipairs(ROUNDING) do
         if element.name == item.gui and find(frame, item.gui) == element then
             if game.is_multiplayer() and not player.admin then
@@ -341,6 +362,27 @@ function M.handle_selection(event, states)
             return
         end
     end
+end
+
+-- Factorio entity picker: select an electrical building to add a manual filter.
+function M.handle_elem_changed(event, states)
+    local element = event.element
+    if not element or not element.valid or element.name ~= 'ec_mk2_add_entity' then return end
+    local player = game.get_player(event.player_index)
+    local frame = player and player.gui.screen[ROOT]
+    local id = player and gui_context()[player.index]
+    local state = id and states[id]
+    if not frame or not frame.valid or not state or
+       find(frame, 'ec_mk2_add_entity') ~= element then return end
+    local config = mk2_modes.get(id)
+    if config.mode == 'manual' and element.elem_value then
+        if not mk2_modes.add_filter(id, element.elem_value) then
+            player.print(caption_key('mk2-manual-invalid'))
+        end
+    end
+    element.elem_value = nil
+    gui_filter_signatures()[player.index] = nil
+    M.refresh(player, state)
 end
 
 function M.handle_checked(event, states)
