@@ -34,14 +34,11 @@ end
 
 ---@param a LuaEntity
 ---@param b LuaEntity
-local function connect_wires(a,b)
-    for _, wire in ipairs{defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green} do
-        if not a.get_circuit_network(wire) then
-            local connector_a = a.get_wire_connector(wire, true)
-            local connector_b = b.get_wire_connector(wire, true)
-            connector_a.connect_to(connector_b, false, defines.wire_origin.script)
-        end
-    end
+-- Sensors have no red/green circuit connectors. Their electrical
+-- satisfaction/network sampling uses the physical power network only.
+-- Keep this delegate because state and meter owners call it on updates.
+local function connect_wires(a, b)
+    return nil
 end
 
 local function toggle_light(state, value)
