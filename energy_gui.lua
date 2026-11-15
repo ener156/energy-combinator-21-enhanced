@@ -112,7 +112,8 @@ function M.open(player, state)
         caption=caption_key("title"),
     }
     frame.auto_center = true
-    frame.style.minimal_width = 620
+    frame.style.minimal_width = 880
+    frame.style.maximal_width = 940
     local header = frame.add{type="flow", direction="horizontal"}
     header.add{type="label", caption=entity.name:find("MK2", 1, true) and caption_key("mk2") or caption_key("mk1")}
     header.add{type="empty-widget", style="draggable_space"}.style.horizontally_stretchable = true
@@ -122,14 +123,17 @@ function M.open(player, state)
     local overview_tab = tabs.add{type="tab", caption=caption_key("overview")}
     local overview = tabs.add{type="flow", name="ec_overview", direction="vertical"}
     tabs.add_tab(overview_tab, overview)
-    overview.add{type="label", caption=caption_key("factor")}
-    overview.add{type="label", name="ec_unit", caption="—", style="heading_2_label"}
-    overview.add{type="label", caption=caption_key("overview-explanation")}
+    local resolution = overview.add{type="flow", direction="horizontal"}
+    resolution.add{type="label", caption=caption_key("factor")}
+    resolution.add{type="label", name="ec_unit", caption="—", style="heading_2_label"}
+    local intro = overview.add{type="label", caption=caption_key("overview-explanation")}
+    intro.style.single_line = false
+    intro.style.maximal_width = 820
     -- Native-style shallow panel with a measured-input and circuit-output column.
     local panel = overview.add{type="frame", direction="vertical", style="inside_shallow_frame_with_padding"}
     local grid = panel.add{type="table", column_count=3}
-    grid.style.horizontal_spacing = 22
-    grid.style.vertical_spacing = 11
+    grid.style.horizontal_spacing = 24
+    grid.style.vertical_spacing = 7
     grid.add{type="label", caption=caption_key("power-signal")}
     grid.add{type="label", caption=caption_key("power-measured")}
     grid.add{type="label", caption=caption_key("power-output")}
@@ -149,8 +153,13 @@ function M.open(player, state)
             type="scroll-pane", name="ec_overview_filter_scroller",
             direction="vertical",
         }
+        local headings = filter_panel.add{type="flow", direction="horizontal"}
+        headings.add{type="label", caption=caption_key("overview-filter-building"),
+            style="bold_label"}.style.minimal_width = 590
+        headings.add{type="label", caption=caption_key("overview-filter-number"),
+            style="bold_label"}
         scroller.style.maximal_height = 180
-        scroller.style.minimal_width = 420
+        scroller.style.minimal_width = 680
         scroller.add{type="flow", name="ec_overview_filter_list", direction="vertical"}
     end
     overview.add{type="label", caption=caption_key("rounding-hint")}
@@ -158,15 +167,28 @@ function M.open(player, state)
     local settings_tab = tabs.add{type="tab", caption=caption_key("settings")}
     local setting_flow = tabs.add{type="flow", name="ec_settings", direction="vertical"}
     tabs.add_tab(settings_tab, setting_flow)
-    setting_flow.add{type="label", caption=caption_key("factor-help")}
-    local change = setting_flow.add{type="flow", direction="horizontal"}
-    change.add{type="textfield", name="ec_factor_input", text=tostring(get_factor(state)),
-               numeric=true, allow_negative=true}
-    change.add{type="button", name="ec_apply_factor", caption=caption_key("apply-factor"), style="confirm_button"}
-    setting_flow.add{type="label", caption=caption_key("rounding-mapwide")}
-    local rounding_table = setting_flow.add{type="table", column_count=2}
-    rounding_table.style.horizontal_spacing = 14
-    rounding_table.style.vertical_spacing = 8
+    local columns = setting_flow.add{type="flow", direction="horizontal"}
+    columns.style.horizontal_spacing = 14
+    local general = columns.add{type="frame", direction="vertical",
+        style="inside_shallow_frame_with_padding"}
+    general.style.minimal_width = 390
+    general.add{type="label", caption=caption_key("settings-general-title"),
+        style="heading_2_label"}
+    local factor_help = general.add{type="label", caption=caption_key("factor-help")}
+    factor_help.style.single_line = false
+    factor_help.style.maximal_width = 360
+    local change = general.add{type="flow", direction="horizontal"}
+    local factor_field = change.add{type="textfield", name="ec_factor_input",
+        text=tostring(get_factor(state)), numeric=true, allow_negative=true}
+    factor_field.style.width = 95
+    change.add{type="button", name="ec_apply_factor", caption=caption_key("apply-factor"),
+        style="confirm_button"}
+    local rounding_help = general.add{type="label", caption=caption_key("rounding-mapwide")}
+    rounding_help.style.single_line = false
+    rounding_help.style.maximal_width = 360
+    local rounding_table = general.add{type="table", column_count=2}
+    rounding_table.style.horizontal_spacing = 8
+    rounding_table.style.vertical_spacing = 7
     for _, item in ipairs(ROUNDING) do
         rounding_table.add{type="label", caption={"mod-setting-name." .. item.key}}
         local choices = {}
@@ -177,25 +199,33 @@ function M.open(player, state)
             type="drop-down", name=item.gui, items=choices,
             selected_index=mode_index(settings.global[item.key].value),
         }
-        dropdown.style.minimal_width = 190
+        dropdown.style.minimal_width = 150
     end
-    setting_flow.add{
+    general.add{
         type="checkbox", name="ec_alt_checkbox", caption=caption_key("alt-checkbox"),
         state=settings.global[ALT_SETTING].value,
     }
     if entity.name:find("MK2", 1, true) then
         local configuration = mk2_modes.get(entity.unit_number)
-        setting_flow.add{type="line"}
-        setting_flow.add{type="label", caption=caption_key("mk2-mode-title"), style="heading_2_label"}
-        setting_flow.add{type="drop-down", name="ec_mk2_mode",
+        local filters = columns.add{type="frame", direction="vertical",
+            style="inside_shallow_frame_with_padding"}
+        filters.style.minimal_width = 420
+        filters.add{type="label", caption=caption_key("mk2-mode-title"),
+            style="heading_2_label"}
+        local selector = filters.add{type="drop-down", name="ec_mk2_mode",
             items={caption_key("mode-auto"), caption_key("mode-all"), caption_key("mode-manual")},
             selected_index=mk2_mode_index(configuration.mode)}
-        setting_flow.add{type="label", caption=caption_key("mk2-mode-help")}
-        local manual = setting_flow.add{type="flow", name="ec_mk2_manual", direction="vertical"}
+        selector.style.minimal_width = 285
+        local mode_help = filters.add{type="label", caption=caption_key("mk2-mode-help")}
+        mode_help.style.single_line = false
+        mode_help.style.maximal_width = 400
+        local manual = filters.add{type="flow", name="ec_mk2_manual", direction="vertical"}
         manual.add{type="label", caption=caption_key("mk2-manual-title")}
         local add = manual.add{type="flow", direction="horizontal"}
         add.add{type="choose-elem-button", name="ec_mk2_add_entity", elem_type="entity"}
-        add.add{type="label", caption=caption_key("mk2-manual-add-help")}
+        local pick_help = add.add{type="label", caption=caption_key("mk2-manual-add-help")}
+        pick_help.style.single_line = false
+        pick_help.style.maximal_width = 335
         -- Up to 32 filters can be selected. Keep the settings tab and its
         -- footer usable instead of growing the entire GUI off-screen.
         local manual_scroll = manual.add{
@@ -203,7 +233,7 @@ function M.open(player, state)
             direction="vertical",
         }
         manual_scroll.style.maximal_height = 240
-        manual_scroll.style.minimal_width = 420
+        manual_scroll.style.minimal_width = 400
         manual_scroll.add{type="flow", name="ec_mk2_filter_list", direction="vertical"}
     end
 
@@ -241,7 +271,10 @@ local function update_manual_list(player, frame, config)
             local line = list.add{type="flow", direction="horizontal"}
             local prototype = prototypes.entity[name]
             local caption = prototype and prototype.localised_name or name
-            line.add{type="label", caption={"", "[entity=" .. name .. "] ", caption}}
+            local label = line.add{type="label",
+                caption={"", "[entity=" .. name .. "] ", caption}}
+            label.style.minimal_width = 240
+            label.style.maximal_width = 265
             line.add{type="button", name="ec_mk2_remove_" .. i,
                 caption=caption_key("mk2-manual-remove")}
         end
@@ -289,11 +322,11 @@ local function update_filter_overview(player, frame, state, config, details)
         for i, name in ipairs(names) do
             local line = list.add{type="flow", direction="horizontal"}
             local prototype = prototypes.entity[name]
-            line.add{type="label", caption={
+            local name_label = line.add{type="label", caption={
                 "", "[entity=" .. name .. "] ",
                 prototype and prototype.localised_name or name,
             }}
-            line.add{type="empty-widget"}.style.horizontally_stretchable = true
+            name_label.style.minimal_width = 585
             line.add{type="label", name="ec_overview_filter_count_" .. i, caption="—"}
         end
         if #names == 0 then
@@ -309,9 +342,8 @@ local function update_filter_overview(player, frame, state, config, details)
     local counts = measured and details.filter_counts or nil
     for i, name in ipairs(names) do
         value(list, "ec_overview_filter_count_" .. i,
-            counts and {"energy-combinator-gui.overview-filter-count",
-                        tostring(counts[name] or 0)}
-                   or caption_key("overview-filter-unavailable"))
+            counts and tostring(counts[name] or 0)
+                   or "—")
     end
 end
 
