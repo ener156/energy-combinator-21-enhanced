@@ -77,6 +77,30 @@ local function caption_key(key)
     return {"energy-combinator-gui." .. key}
 end
 
+-- A tabbed-pane normally inherits the height of its largest content page.
+-- Size each page for the active workflow so the short diagnostics do not
+-- reserve the full height of the MK2 manual filter editor.
+local function resize_active_tab(player, frame, state)
+    local tabs = find(frame, "ec_tabs")
+    if not tabs or not tabs.valid then return end
+    local index = tabs.selected_tab_index or 1
+    local mk2 = state and state.entity and state.entity.valid
+        and state.entity.name:find("MK2", 1, true) ~= nil
+    local target
+    if index == 1 then
+        target = mk2 and 535 or 330
+    elseif index == 2 then
+        local config = mk2 and mk2_modes.get(state.entity.unit_number) or nil
+        target = config and config.mode == "manual" and 585 or 465
+    else
+        target = 270
+    end
+    if tabs.style.minimal_height ~= target or tabs.style.maximal_height ~= target then
+        tabs.style.height = target
+        frame.force_auto_center()
+    end
+end
+
 local function row(table_gui, entry)
     table_gui.add{
         type="label",
@@ -244,6 +268,7 @@ function M.open(player, state)
     local diag_tab = tabs.add{type="tab", caption=caption_key("diagnostics")}
     local diag = tabs.add{type="flow", name="ec_diagnostics", direction="vertical"}
     tabs.add_tab(diag_tab, diag)
+    tabs.selected_tab_index = 1
     local diag_columns = diag.add{type="flow", name="ec_diagnostics_columns",
         direction="horizontal"}
     diag_columns.style.horizontal_spacing = 14
@@ -427,6 +452,18 @@ function M.refresh(player, state)
     end
     local checkbox = find(frame, "ec_alt_checkbox")
     if checkbox then checkbox.state = settings.global[ALT_SETTING].value end
+    resize_active_tab(player, frame, state)
+end
+
+function M.handle_tab_changed(event, states)
+    local player = game.get_player(event.player_index)
+    local frame = player and player.gui.screen[ROOT]
+    if not frame or not frame.valid or find(frame, "ec_tabs") ~= event.element then return end
+    local unit = gui_context()[player.index]
+    local state = unit and states[unit]
+    if state and state.entity and state.entity.valid then
+        resize_active_tab(player, frame, state)
+    end
 end
 
 function M.refresh_open_players(states)
