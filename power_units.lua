@@ -2,6 +2,19 @@
 -- Circuit output and rounding remain authoritative in control.lua.
 local M = {}
 local suffixes = {"W", "kW", "MW", "GW", "TW", "PW", "EW", "ZW", "YW"}
+local energy_suffixes = {"J", "kJ", "MJ", "GJ", "TJ", "PJ", "EJ", "ZJ", "YJ"}
+
+function M.energy_factor_label(x)
+    if type(x) ~= "number" or x ~= math.floor(x) then return "J" end
+    local group = math.floor(x / 3)
+    if group < 0 or group >= #energy_suffixes then
+        return "10^" .. tostring(x) .. " J"
+    end
+    local coefficient = 10 ^ (x % 3)
+    local suffix = energy_suffixes[group + 1]
+    return coefficient == 1 and suffix or (tostring(coefficient) .. " " .. suffix)
+end
+
 
 function M.factor_label(x)
     if type(x) ~= "number" or x ~= math.floor(x) then return "W" end
@@ -37,6 +50,16 @@ function M.watts_at_factor(watts, factor)
     local label = M.factor_label(factor)
     if factor % 3 == 0 then return value .. " " .. label end
     return value .. " × " .. label
+end
+
+-- Format energy in joules using the SAME numerical scaling X.
+-- The electric power scale is watts, whereas storage is joules.
+function M.joules_at_factor(joules, factor)
+    local shown = M.watts_at_factor(joules, factor)
+    if shown == "—" then return shown end
+    local old_suffix = M.factor_label(factor)
+    local new_suffix = M.energy_factor_label(factor)
+    return shown:sub(1, -#old_suffix-1) .. new_suffix
 end
 
 return M
