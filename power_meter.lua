@@ -79,7 +79,9 @@ function M.write(state, tick, modes, is_mk2)
         meter_sensors.set_light(state, false)
         return
     end
-    local filters = mk2_filters.read(state, is_mk2)
+    local filters, selected_mode = mk2_filters.read(state, is_mk2)
+    details.filter_mode = selected_mode or 'all'
+    details.filter_active = filters ~= nil and #filters > 0
     details.filter_count = filters and #filters or 0
     if is_mk2 and filters == nil and state.filter_signature ~= nil then
         -- A filter cable was just removed. Start fresh unfiltered statistics
@@ -125,7 +127,13 @@ function M.write(state, tick, modes, is_mk2)
     meter_sensors.set_light(state, enabled)
     circuit_slots.write_power(control, signal.min, input_diff, output_diff, maxin, maxout)
     if is_mk2 then
-        circuit_slots.write_filter_counts(state, counts, details.connected)
+        -- Only AUTO with actual external filters generates circuit feedback.
+        -- Manual modes must never echo the incoming circuit into filters.
+        if selected_mode == 'auto' and filters ~= nil then
+            circuit_slots.write_filter_counts(state, counts, details.connected)
+        else
+            circuit_slots.write_filter_counts(state, {}, false)
+        end
     end
 end
 
