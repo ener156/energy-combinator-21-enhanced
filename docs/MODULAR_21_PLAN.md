@@ -55,6 +55,24 @@ The user's required behavior is **MK2 without red/green circuit wire must measur
 - Native-generated candidate SHA256 `F0498FC3F030FAC3A77334029E47FD507162CA7FF850028E5A96358F6FD59263`; staged archive verification on Windows tracked via [run 43629252183](https://github.com/ener156/Respberry-Windows-Runner/actions/runs/43629252183) (verify completion separately). Locally re-packed patch from the exact same source blobs SHA256 `032700AD1EDCDDB5B6A8FF9212A1EA4B401E48B377BFC9A70FB08DBA8A8FB739`; these two ZIP hashes differ because of packaging, **not** module content. Both archives have internal mod version 1.2.14.
 - No main merge, silent installation, changes to user's saves, or Mod Portal release.
 
+## ECMOD9: three-mode MK2 (15 November 2026)
+
+User-accepted specification (REGISTER_WORK / WORK-033): three distinct MK2 modes with **AUTO** as the default for new and existing MK2 entities.
+
+- **auto**: Detect effective external red/green circuit energy-building signals (Factorio item signals whose placed entity consumes or generates electric energy). No cable, empty cable, solely invalid/virtual signals or entirely self-generated feedback => **nil** filters, meaning the entire electric network is measured by MK1's direct/full-grid path. At least one valid signal => prototype-filtered consumption/production and maxima. Feedback excludes the combinator's own circuit output and duplicate prototype names.
+- **all**: Explicit full-grid measurement; ignore incoming circuit filter signals, including an active wired sender.
+- **manual**: User chooses electrical entity prototypes in the dedicated MK2 Settings tab using a Factorio entity choose-element picker; named prototypes are stored per MK2 `unit_number` (up to 32, deduplicated/sorted), without needing a circuit wire. Empty manual list => entire grid. Manual selection does not emit misleading auto feedback.
+- Persist in `storage.mk2_modes`; `mk2_modes.lua` owns this table and validations; `mk2_filters.lua` determines filters, `power_meter.lua` remains the sole physical measurement owner, `circuit_slots.lua` the sole output writer. `combinator_state.lua` allocates and removes settings, preserves across `on_configuration_changed` state rebuild; cloning copies distinct tables. UI operations dispatched by `control.lua`.
+- GUI diagnostic displays configured mode and *effective* full-grid vs. filtered mode. Localization added in DE/EN/RU; original Factor X, rounding settings and ALT behavior remain.
+- Wire/filter-mode changes use the existing `filter_baseline.lua` rebase logic to avoid cross-selection spikes.
+- Reuse prototype names and current version 1.2.14 **only for the isolated experimental test archive**. This is **not** a published release or upgrade of the stable main branch.
+
+Validation:
+- Local Lua `test_ecmod9.lua` standalone 3-mode tests PASS; repository `tests/modular_mk2_modes_test.lua` added and `tests/modular_circuit_test.lua` legacy expectation updated.
+- Factorio 2.1.24 Windows [native test run 43702242794](https://github.com/ener156/Respberry-Windows-Runner/actions/runs/43702242794) PASS, `ECMOD9_NATIVE_THREE_MODES_QA=PASS`, `WINDOWS_SYSTEM_SCRIPT_RC=0`, tick 1181. Native scenarios: AUTO radar-only, solar-only, both, empty wired (full-grid), wireless (full-grid), signal-wire disconnect/reconnect, manual all while wired, manual radar wired, manual radar without cable, manual removal->full-grid, manual->AUTO wireless. For menu-independent manual selection assertions the runner used a **temporary isolated QA-only remote adapter** appended to the tested `control.lua`, not present in the production code.
+- Separate source-matching all-slash-path test ZIP: `/mnt/data/ECMOD9_ThreeModes_Test/energy-combinator-21-enhanced_1.2.14.zip`, SHA256 `D82ED5AE40DA44050F61E22EC722C932F2BB05350CA7AA82F1E8777921F7F052`; 42 file entries including `mk2_modes.lua` and the patched GUI/locales.
+- **Still open:** actual native GUI choose-element interaction, save/reload of manual settings in a user save, Blueprint placement/copy-paste restoration, E5 Linux installation and real multiplayer join with ECMOD9, no desync, regression across existing user save. Inherited user-confirmed ECMOD8 multiplayer PASS does not automatically certify this new build. HAUSE1/E5 installed ECMOD8 unchanged.
+
 ## Compatibility invariants
 
 1. Retain existing prototype names, slot layout, GUI and shortcut, saved scaling factor, MK2 feedback and map-wide rounding settings.
