@@ -4,6 +4,7 @@
 local power_rounding = require "power_rounding"
 local alt_units = require "alt_units"
 local electric_statistics = require "electric_statistics"
+local accumulator_energy = require "accumulator_energy"
 local electric_direct = require "electric_direct"
 local filter_baseline = require "filter_baseline"
 local circuit_slots = require "circuit_slots"
@@ -75,7 +76,9 @@ function M.write(state, tick, modes, is_mk2)
             current_consumption = 0, current_production = 0,
             maximum_consumption = 0, maximum_production = 0,
         }
+        state.last_energy = {stored=0, capacity=0}
         circuit_slots.write_power(control, signal.min, 0, 0, 0, 0)
+        circuit_slots.write_storage(control, 0, 0)
         if is_mk2 then
             local configuration = mk2_modes.get(state.entity.unit_number)
             if configuration.mode == 'manual' then
@@ -131,6 +134,11 @@ function M.write(state, tick, modes, is_mk2)
             details.method = "direct"
         end
     end
+    -- Storage energy is separate from power generation/consumption (J vs W).
+    -- The same effective MK2 prototype and quality filters are used.
+    local stored_joules, capacity_joules =
+        accumulator_energy.collect(state.net, filters, quality_filters)
+    state.last_energy = {stored=stored_joules, capacity=capacity_joules}
     -- A display-only snapshot of the measured physical power, before any chosen
     -- circuit rounding. The authoritative network measurement remains in this owner.
     state.last_watts = {
@@ -149,6 +157,14 @@ function M.write(state, tick, modes, is_mk2)
     end
     meter_sensors.set_light(state, enabled)
     circuit_slots.write_power(control, signal.min, input_diff, output_diff, maxin, maxout)
+    -- Existing X applies in J per signal point. Storage overflow never
+    -- suppresses the independent four power signals.
+    local stored_signal = power_rounding.round_signal(stored_joules * scale, "nearest")
+    local capacity_signal = power_rounding.round_signal(capacity_joules * scale, "nearest")
+    if not is_int32(stored_signal) or not is_int32(capacity_signal) then
+        stored_signal, capacity_signal = 0, 0
+    end
+    circuit_slots.write_storage(control, stored_signal, capacity_signal)
     if is_mk2 then
         -- Only AUTO with actual external filters generates circuit feedback.
         -- Manual modes must never echo the incoming circuit into filters.
