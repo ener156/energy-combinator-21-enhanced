@@ -4,6 +4,7 @@
 local circuit_slots = require "circuit_slots"
 local meter_sensors = require "meter_sensors"
 local alt_units = require "alt_units"
+local mk2_modes = require "mk2_modes"
 local M = {}
 
 ---@class ECombState
@@ -31,6 +32,7 @@ local function new_state(entity, is_mk2)
     meter_sensors.connect(state.sat, state.net)
     state.control = entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     circuit_slots.initialize(state.control, is_mk2)
+    if is_mk2 then mk2_modes.ensure(entity.unit_number) end
     state.light = state.sat.get_or_create_control_behavior()
     state.light.circuit_condition = {condition={
         comparator = "=",
@@ -66,6 +68,7 @@ function M.cleanup(entity)
             alt_units.remove(entity.unit_number)
             meter_sensors.dispose(state)
             storage.state[entity.unit_number] = nil
+            mk2_modes.forget(entity.unit_number)
             if state.registration then storage.registrations[state.registration] = nil end
         end
     end
