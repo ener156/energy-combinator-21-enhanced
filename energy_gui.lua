@@ -196,7 +196,15 @@ function M.open(player, state)
         local add = manual.add{type="flow", direction="horizontal"}
         add.add{type="choose-elem-button", name="ec_mk2_add_entity", elem_type="entity"}
         add.add{type="label", caption=caption_key("mk2-manual-add-help")}
-        manual.add{type="flow", name="ec_mk2_filter_list", direction="vertical"}
+        -- Up to 32 filters can be selected. Keep the settings tab and its
+        -- footer usable instead of growing the entire GUI off-screen.
+        local manual_scroll = manual.add{
+            type="scroll-pane", name="ec_mk2_filter_scroller",
+            direction="vertical",
+        }
+        manual_scroll.style.maximal_height = 240
+        manual_scroll.style.minimal_width = 420
+        manual_scroll.add{type="flow", name="ec_mk2_filter_list", direction="vertical"}
     end
 
     local diag_tab = tabs.add{type="tab", caption=caption_key("diagnostics")}
