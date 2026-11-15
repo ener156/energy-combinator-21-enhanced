@@ -194,6 +194,26 @@ function M.write_manual_preview(state, names, counts)
     state.prev_outputs = own
 end
 
+
+-- Read, but never mutate, native filter identities supplied by a blueprint.
+-- The Factorio parameter editor changes signal identities in these slots,
+-- while mod-private blueprint tags retain their original values.
+function M.read_manual_filter_names(control)
+    local names = {}
+    if not control or control.sections_count == 0 then return names end
+    local section = control.sections[1]
+    for index = IDX, section.filters_count do
+        local filter = section.get_slot(index)
+        local value = filter and filter.value
+        if value and value.type == 'item' and type(value.name) == 'string' then
+            local item = prototypes.item[value.name]
+            local placed = item and item.place_result
+            names[#names+1] = placed and placed.name or value.name
+        end
+    end
+    return names
+end
+
 M.get = get_signal
 M.ensure_factor = function(control) return default_signal(control, DEFAULT_F) end
 M.factor_signal = F
