@@ -1,6 +1,7 @@
 -- Owns the dedicated Energy Combinator GUI. It only reads measurements:
 -- the existing control.lua owns circuit state and provides the factor writer.
 local units = require "power_units"
+local mk2_modes = require "mk2_modes"
 local M = {}
 local ROOT = "ec_enhanced_gui"
 -- Map settings stay authoritative; dropdowns are just editors for those settings.
@@ -11,6 +12,7 @@ local ROUNDING = {
     {key="energy-combinator-round-maximum-production", gui="ec_round_max_prod"},
 }
 local MODES = {"nearest", "up", "down"}
+local MK2_MODES = {"auto", "all", "manual"}
 local ALT_SETTING = "energy-combinator-show-alt-units"
 -- The output column reads the existing constant-combinator slots; it is not a
 -- second cache or signal writer. Physical measurements stay in state.last_watts.
@@ -36,6 +38,18 @@ end
 local function gui_context()
     storage.energy_gui_context = storage.energy_gui_context or {}
     return storage.energy_gui_context
+end
+
+local function gui_filter_signatures()
+    storage.energy_gui_filter_signatures = storage.energy_gui_filter_signatures or {}
+    return storage.energy_gui_filter_signatures
+end
+
+local function mk2_mode_index(value)
+    for i, mode in ipairs(MK2_MODES) do
+        if mode == value then return i end
+    end
+    return 1
 end
 
 local function get_factor(state)
@@ -80,6 +94,7 @@ function M.close(player)
     local frame = player.gui.screen[ROOT]
     if frame and frame.valid then frame.destroy() end
     gui_context()[player.index] = nil
+    gui_filter_signatures()[player.index] = nil
 end
 
 function M.open(player, state)
@@ -145,6 +160,21 @@ function M.open(player, state)
         type="checkbox", name="ec_alt_checkbox", caption=caption_key("alt-checkbox"),
         state=settings.global[ALT_SETTING].value,
     }
+    if entity.name:find("MK2", 1, true) then
+        local configuration = mk2_modes.get(entity.unit_number)
+        setting_flow.add{type="line"}
+        setting_flow.add{type="label", caption=caption_key("mk2-mode-title"), style="heading_2_label"}
+        setting_flow.add{type="drop-down", name="ec_mk2_mode",
+            items={caption_key("mode-auto"), caption_key("mode-all"), caption_key("mode-manual")},
+            selected_index=mk2_mode_index(configuration.mode)}
+        setting_flow.add{type="label", caption=caption_key("mk2-mode-help")}
+        local manual = setting_flow.add{type="flow", name="ec_mk2_manual", direction="vertical"}
+        manual.add{type="label", caption=caption_key("mk2-manual-title")}
+        local add = manual.add{type="flow", direction="horizontal"}
+        add.add{type="choose-elem-button", name="ec_mk2_add_entity", elem_type="entity"}
+        add.add{type="label", caption=caption_key("mk2-manual-add-help")}
+        manual.add{type="flow", name="ec_mk2_filter_list", direction="vertical"}
+    end
 
     local diag_tab = tabs.add{type="tab", caption=caption_key("diagnostics")}
     local diag = tabs.add{type="flow", name="ec_diagnostics", direction="vertical"}
@@ -154,6 +184,7 @@ function M.open(player, state)
     diag.add{type="label", name="ec_sat_id", caption="—"}
     diag.add{type="label", name="ec_measurement_mode", caption="—"}
     diag.add{type="label", name="ec_filter_status", caption="—"}
+    diag.add{type="label", name="ec_filter_mode_status", caption="—"}
     diag.add{type="label", name="ec_combinator_status", caption="—"}
 
     local footer = frame.add{type="flow", direction="horizontal"}
@@ -167,6 +198,33 @@ end
 local function value(frame, name, text)
     local label = find(frame, name)
     if label then label.caption = text end
+end
+
+local function update_manual_list(player, frame, config)
+    local list = find(frame, "ec_mk2_filter_list")
+    if not list then return end
+    local signature = table.concat(config.filters, "\n")
+    if gui_filter_signatures()[player.index] ~= signature then
+        list.clear()
+        for i, name in ipairs(config.filters) do
+            local line = list.add{type="flow", direction="horizontal"}
+            local prototype = prototypes.entity[name]
+            local caption = prototype and prototype.localised_name or name
+            line.add{type="label", caption={"", "[entity=" .. name .. "] ", caption}}
+            line.add{type="button", name="ec_mk2_remove_" .. i,
+                caption=caption_key("mk2-manual-remove")}
+        end
+        if #config.filters == 0 then
+            list.add{type="label", caption=caption_key("mk2-manual-empty")}
+        end
+        gui_filter_signatures()[player.index] = signature
+    end
+    local add = find(frame, "ec_mk2_add_entity")
+    if add then add.enabled = config.mode == "manual" and #config.filters < mk2_modes.max_filters end
+    for i=1,#config.filters do
+        local button = find(list, "ec_mk2_remove_" .. i)
+        if button then button.enabled = config.mode == "manual" end
+    end
 end
 
 function M.refresh(player, state)
@@ -192,10 +250,21 @@ function M.refresh(player, state)
     value(frame, "ec_sat_id", {"energy-combinator-gui.satisfaction-id", tostring(details.satisfaction_id or "—")})
     local method = details.method or "unknown"
     value(frame, "ec_measurement_mode", {"energy-combinator-gui.measurement-mode", caption_key("method-" .. method)})
-    if details.is_mk2 then
+    if state.entity.name:find("MK2", 1, true) then
+        local config = mk2_modes.get(state.entity.unit_number)
+        local selector = find(frame, "ec_mk2_mode")
+        if selector and selector.selected_index ~= mk2_mode_index(config.mode) then
+            selector.selected_index = mk2_mode_index(config.mode)
+        end
+        update_manual_list(player, frame, config)
         value(frame, "ec_filter_status", {"energy-combinator-gui.filter-count", details.filter_count or 0})
+        local effective = details.filter_active and caption_key("mk2-effective-filtered")
+            or caption_key("mk2-effective-all")
+        value(frame, "ec_filter_mode_status", {"energy-combinator-gui.mk2-effective",
+            caption_key("mode-" .. config.mode), effective})
     else
         value(frame, "ec_filter_status", caption_key("filter-mk1"))
+        value(frame, "ec_filter_mode_status", "")
     end
     value(frame, "ec_combinator_status", details.enabled == false and caption_key("combinator-disabled") or caption_key("combinator-enabled"))
     for _, item in ipairs(ROUNDING) do
