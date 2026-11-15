@@ -149,15 +149,16 @@ function M.open(player, state)
                          style="heading_2_label"}
         filter_panel.add{type="label", name="ec_overview_filter_source", caption="—"}
         filter_panel.add{type="label", name="ec_overview_filter_scope", caption="—"}
-        local scroller = filter_panel.add{
-            type="scroll-pane", name="ec_overview_filter_scroller",
-            direction="vertical",
-        }
+        -- The header belongs ABOVE the scrollable list, never below it.
         local headings = filter_panel.add{type="flow", name="ec_filter_headings", direction="horizontal"}
         headings.add{type="label", caption=caption_key("overview-filter-building"),
             style="bold_label"}.style.minimal_width = 590
         headings.add{type="label", caption=caption_key("overview-filter-number"),
             style="bold_label"}
+        local scroller = filter_panel.add{
+            type="scroll-pane", name="ec_overview_filter_scroller",
+            direction="vertical",
+        }
         scroller.style.maximal_height = 180
         scroller.style.minimal_width = 680
         scroller.add{type="flow", name="ec_overview_filter_list", direction="vertical"}
@@ -219,6 +220,9 @@ function M.open(player, state)
         local mode_help = filters.add{type="label", caption=caption_key("mk2-mode-help")}
         mode_help.style.single_line = false
         mode_help.style.maximal_width = 400
+        -- Preserve manual filters while Auto / Full Grid is selected, but
+        -- show only a concise inactive summary outside manual filter mode.
+        filters.add{type="label", name="ec_mk2_manual_inactive", caption=""}
         local manual = filters.add{type="flow", name="ec_mk2_manual", direction="vertical"}
         manual.add{type="label", caption=caption_key("mk2-manual-title")}
         local add = manual.add{type="flow", direction="horizontal"}
@@ -375,6 +379,16 @@ function M.refresh(player, state)
         local selector = find(frame, "ec_mk2_mode")
         if selector and selector.selected_index ~= mk2_mode_index(config.mode) then
             selector.selected_index = mk2_mode_index(config.mode)
+        end
+        local manual = find(frame, "ec_mk2_manual")
+        if manual then manual.visible = config.mode == "manual" end
+        local inactive = find(frame, "ec_mk2_manual_inactive")
+        if inactive then
+            inactive.visible = config.mode ~= "manual"
+            if config.mode ~= "manual" then
+                inactive.caption = {"energy-combinator-gui.mk2-manual-inactive",
+                    tostring(#config.filters)}
+            end
         end
         update_manual_list(player, frame, config)
         update_filter_overview(player, frame, state, config, details)
