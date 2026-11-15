@@ -107,6 +107,13 @@ function M.write(state, tick, modes, is_mk2)
     local variance = 60 / (tick - state.tick)
     local input, output, maxin, maxout, counts = electric_statistics.collect(state.net, state.sat, filters)
     details.filter_counts = counts
+    -- On the first sample after switching from normal-only statistics to
+    -- quality-aware totals, rebase historical counters exactly once. Without
+    -- this, existing saves can emit an artificial spike spanning all history.
+    if state.quality_stats_revision ~= 1 then
+        state.input, state.output = input, output
+        state.quality_stats_revision = 1
+    end
     filter_baseline.rebase_if_changed(state, filters, input, output)
     -- Keep existing cumulative inputs, building filters and capacity estimates authoritative.
     local input_diff = diff(input, state.input) * variance * scale
