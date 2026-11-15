@@ -131,7 +131,7 @@ function M.open(player, state)
     intro.style.maximal_width = 820
     -- Native-style shallow panel with a measured-input and circuit-output column.
     local panel = overview.add{type="frame", direction="vertical", style="inside_shallow_frame_with_padding"}
-    local grid = panel.add{type="table", column_count=3}
+    local grid = panel.add{type="table", name="ec_power_grid", column_count=3}
     grid.style.horizontal_spacing = 24
     grid.style.vertical_spacing = 7
     grid.add{type="label", caption=caption_key("power-signal")}
@@ -153,7 +153,7 @@ function M.open(player, state)
             type="scroll-pane", name="ec_overview_filter_scroller",
             direction="vertical",
         }
-        local headings = filter_panel.add{type="flow", direction="horizontal"}
+        local headings = filter_panel.add{type="flow", name="ec_filter_headings", direction="horizontal"}
         headings.add{type="label", caption=caption_key("overview-filter-building"),
             style="bold_label"}.style.minimal_width = 590
         headings.add{type="label", caption=caption_key("overview-filter-number"),
@@ -167,9 +167,9 @@ function M.open(player, state)
     local settings_tab = tabs.add{type="tab", caption=caption_key("settings")}
     local setting_flow = tabs.add{type="flow", name="ec_settings", direction="vertical"}
     tabs.add_tab(settings_tab, setting_flow)
-    local columns = setting_flow.add{type="flow", direction="horizontal"}
+    local columns = setting_flow.add{type="flow", name="ec_settings_columns", direction="horizontal"}
     columns.style.horizontal_spacing = 14
-    local general = columns.add{type="frame", direction="vertical",
+    local general = columns.add{type="frame", name="ec_general_panel", direction="vertical",
         style="inside_shallow_frame_with_padding"}
     general.style.minimal_width = 390
     general.add{type="label", caption=caption_key("settings-general-title"),
@@ -207,7 +207,7 @@ function M.open(player, state)
     }
     if entity.name:find("MK2", 1, true) then
         local configuration = mk2_modes.get(entity.unit_number)
-        local filters = columns.add{type="frame", direction="vertical",
+        local filters = columns.add{type="frame", name="ec_filter_settings_panel", direction="vertical",
             style="inside_shallow_frame_with_padding"}
         filters.style.minimal_width = 420
         filters.add{type="label", caption=caption_key("mk2-mode-title"),
