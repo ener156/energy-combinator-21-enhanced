@@ -1,6 +1,7 @@
 -- Owns the dedicated Energy Combinator GUI. It only reads measurements:
 -- the existing control.lua owns circuit state and provides the factor writer.
 local units = require "power_units"
+local circuit_slots = require "circuit_slots"
 local mk2_modes = require "mk2_modes"
 local M = {}
 local ROOT = "ec_enhanced_gui"
@@ -25,6 +26,13 @@ local POWER_ROWS = {
      signal="power-max-consumption", measured="ec_max_cons", output="ec_signal_max_cons"},
     {key="maximum-production", watts="maximum_production", slot=5,
      signal="power-max-production", measured="ec_max_prod", output="ec_signal_max_prod"},
+}
+
+local STORAGE_ROWS = {
+    {key="stored-energy", watts="stored", signal="power-accumulator-energy",
+     measured="ec_acc_stored", output="ec_acc_signal_stored"},
+    {key="storage-capacity", watts="capacity", signal="power-accumulator-capacity",
+     measured="ec_acc_capacity", output="ec_acc_signal_capacity"},
 }
 
 local function mode_index(value)
@@ -201,6 +209,19 @@ function M.open(player, state)
     for _, entry in ipairs(POWER_ROWS) do
         row(grid, entry)
     end
+    local storage_panel = overview.add{type="frame", direction="vertical",
+        name="ec_storage_panel", style="inside_shallow_frame_with_padding"}
+    storage_panel.add{type="label", caption=caption_key("storage-title"),
+        style="heading_2_label"}
+    storage_panel.add{type="label", caption=caption_key("storage-factor-hint")}
+    local storage_grid = storage_panel.add{type="table", name="ec_storage_grid",
+        column_count=3}
+    storage_grid.style.horizontal_spacing = 24
+    storage_grid.style.vertical_spacing = 7
+    storage_grid.add{type="label", caption=caption_key("storage-signal")}
+    storage_grid.add{type="label", caption=caption_key("power-measured")}
+    storage_grid.add{type="label", caption=caption_key("power-output")}
+    for _, entry in ipairs(STORAGE_ROWS) do row(storage_grid, entry) end
     if entity.name:find("MK2", 1, true) then
         local filter_panel = overview.add{
             type="frame", direction="vertical",
@@ -470,6 +491,12 @@ function M.refresh(player, state)
     for _, entry in ipairs(POWER_ROWS) do
         value(frame, entry.measured, units.watts_at_factor(watts[entry.watts], factor))
         value(frame, entry.output, circuit_value(state, entry.slot))
+    end
+    local stored = state.last_energy or {}
+    for _, entry in ipairs(STORAGE_ROWS) do
+        value(frame, entry.measured, units.joules_at_factor(stored[entry.watts], factor))
+        local signal = circuit_slots.read_storage(state.control, entry.signal)
+        value(frame, entry.output, signal and tostring(signal) or "—")
     end
     local details = state.diagnostics or {}
     local connected = details.connected == true
