@@ -77,28 +77,23 @@ local function caption_key(key)
     return {"energy-combinator-gui." .. key}
 end
 
--- A tabbed-pane normally inherits the height of its largest content page.
--- Size each page for the active workflow so the short diagnostics do not
--- reserve the full height of the MK2 manual filter editor.
+-- Native tabs remain in use for selection, but their content widgets are
+-- deliberately empty. Real pages are siblings of the tabbed pane so the
+-- non-selected (possibly tall) manual-filter editor never enlarges Diagnosis.
+-- Unlike a fixed height, this respects player-specific GUI scaling and locale.
 local function resize_active_tab(player, frame, state)
     local tabs = find(frame, "ec_tabs")
     if not tabs or not tabs.valid then return end
     local index = tabs.selected_tab_index or 1
-    local mk2 = state and state.entity and state.entity.valid
-        and state.entity.name:find("MK2", 1, true) ~= nil
-    local target
-    if index == 1 then
-        target = mk2 and 535 or 330
-    elseif index == 2 then
-        local config = mk2 and mk2_modes.get(state.entity.unit_number) or nil
-        target = config and config.mode == "manual" and 585 or 465
-    else
-        target = 270
+    local changed = false
+    for i, name in ipairs({"ec_overview", "ec_settings", "ec_diagnostics"}) do
+        local page = frame[name]
+        if page and page.valid and page.visible ~= (index == i) then
+            page.visible = index == i
+            changed = true
+        end
     end
-    if tabs.style.minimal_height ~= target or tabs.style.maximal_height ~= target then
-        tabs.style.height = target
-        frame.force_auto_center()
-    end
+    if changed then frame.force_auto_center() end
 end
 
 local function row(table_gui, entry)
@@ -145,8 +140,8 @@ function M.open(player, state)
 
     local tabs = frame.add{type="tabbed-pane", name="ec_tabs"}
     local overview_tab = tabs.add{type="tab", caption=caption_key("overview")}
-    local overview = tabs.add{type="flow", name="ec_overview", direction="vertical"}
-    tabs.add_tab(overview_tab, overview)
+    tabs.add_tab(overview_tab, tabs.add{type="empty-widget"})
+    local overview = frame.add{type="flow", name="ec_overview", direction="vertical"}
     local resolution = overview.add{type="flow", direction="horizontal"}
     resolution.add{type="label", caption=caption_key("factor")}
     resolution.add{type="label", name="ec_unit", caption="—", style="heading_2_label"}
@@ -190,8 +185,9 @@ function M.open(player, state)
     overview.add{type="label", caption=caption_key("rounding-hint")}
 
     local settings_tab = tabs.add{type="tab", caption=caption_key("settings")}
-    local setting_flow = tabs.add{type="flow", name="ec_settings", direction="vertical"}
-    tabs.add_tab(settings_tab, setting_flow)
+    tabs.add_tab(settings_tab, tabs.add{type="empty-widget"})
+    local setting_flow = frame.add{type="flow", name="ec_settings", direction="vertical"}
+    setting_flow.visible = false
     local columns = setting_flow.add{type="flow", name="ec_settings_columns", direction="horizontal"}
     columns.style.horizontal_spacing = 14
     local general = columns.add{type="frame", name="ec_general_panel", direction="vertical",
@@ -266,8 +262,9 @@ function M.open(player, state)
     end
 
     local diag_tab = tabs.add{type="tab", caption=caption_key("diagnostics")}
-    local diag = tabs.add{type="flow", name="ec_diagnostics", direction="vertical"}
-    tabs.add_tab(diag_tab, diag)
+    tabs.add_tab(diag_tab, tabs.add{type="empty-widget"})
+    local diag = frame.add{type="flow", name="ec_diagnostics", direction="vertical"}
+    diag.visible = false
     tabs.selected_tab_index = 1
     local diag_columns = diag.add{type="flow", name="ec_diagnostics_columns",
         direction="horizontal"}
