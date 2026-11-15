@@ -110,9 +110,14 @@ eq(maxout*60,600000,"legacy normal maximum production")
 prototypes.entity.accumulator = entity(750000, 750000, nil,
     {legendary=750000}, "accumulator")
 flows["output:accumulator:legendary"] = 6
+flows["input:accumulator:legendary"] = 6
+stat.input_counts = {}
+stat.input_quality_counts = {legendary={accumulator=111}}
 stat.output_counts = {}
 stat.output_quality_counts = {legendary={accumulator=111}}
 input,output,maxin,maxout,counts=statistics.collect(net,sat,nil)
+eq(input,111,"legendary accumulator charge still counted")
+eq(maxin,0,"six legendary accumulators do not inflate max consumption")
 eq(output,111,"legendary accumulator discharge still counted")
 eq(maxout,0,"six legendary accumulators do not add 4.5MW generation capacity")
 eq(counts.accumulator,6,"accumulator count still available to MK2")
