@@ -43,12 +43,13 @@ local transparent = {
 }
 local transparent4 = set(table.deepcopy(transparent),'direction_count',4)
 
+-- Hidden network meters need electrical copper only. Red/green connector
+-- anchors make it possible to attach invisible player circuit wires.
 local function fix_copper(point)
-    point = table.deepcopy(point)
-    for _,layer in pairs(point) do
-        layer.copper = layer.red
-    end
-    return times(4, point)
+    return times(4, {
+        wire = {copper = point.wire.copper or point.wire.red},
+        shadow = {copper = point.shadow.copper or point.shadow.red},
+    })
 end
 
 
@@ -128,9 +129,10 @@ data:extend{
             usage_priority = "primary-input",
             render_no_power_icon = false,
         },
-        circuit_wire_connection_point = table.deepcopy(circuit_connector_definitions["lamp"].points),
-        circuit_connector_sprites = table.deepcopy(circuit_connector_definitions["lamp"].sprites),
-        circuit_wire_max_distance = 0.5,
+        -- No circuit connector: the lamp measures electrical satisfaction
+        -- but must never become an invisible red/green wire endpoint.
+        circuit_wire_max_distance = 0,
+        draw_circuit_wires = false,
     },
 
     {   type = "electric-pole", -- has electric_network_statistics
