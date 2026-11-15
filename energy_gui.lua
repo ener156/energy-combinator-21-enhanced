@@ -267,8 +267,10 @@ local function update_filter_overview(player, frame, state, config, details)
     value(frame, "ec_overview_filter_source",
         {"energy-combinator-gui.overview-filter-source",
          caption_key("mode-" .. config.mode)})
+    local measuring = details.connected == true and details.enabled ~= false
     local active = #names > 0 and config.mode ~= "all"
-    local scope = active and caption_key("mk2-effective-filtered")
+    local scope = not measuring and caption_key("overview-filter-not-measuring")
+        or active and caption_key("mk2-effective-filtered")
         or caption_key("mk2-effective-all")
     value(frame, "ec_overview_filter_scope",
         {"energy-combinator-gui.overview-filter-scope", scope})
@@ -287,14 +289,15 @@ local function update_filter_overview(player, frame, state, config, details)
             line.add{type="label", name="ec_overview_filter_count_" .. i, caption="—"}
         end
         if #names == 0 then
-            local reason = config.mode == "auto" and "overview-filter-auto-empty"
+            local reason = not measuring and "overview-filter-no-data"
+                or config.mode == "auto" and "overview-filter-auto-empty"
                 or config.mode == "manual" and "overview-filter-manual-empty"
                 or "overview-filter-all"
             list.add{type="label", caption=caption_key(reason)}
         end
         gui_overview_signatures()[player.index] = signature
     end
-    local measured = current and details.connected == true and details.enabled ~= false
+    local measured = current and measuring
     local counts = measured and details.filter_counts or nil
     for i, name in ipairs(names) do
         value(list, "ec_overview_filter_count_" .. i,
