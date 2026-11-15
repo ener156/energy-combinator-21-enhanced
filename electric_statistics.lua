@@ -73,7 +73,7 @@ end
 ---@return integer
 ---@return integer
 ---@return table<string,integer>
-local function sum_stats(statistic, category, filters)
+local function sum_stats(statistic, category, filters, qualities)
     local is_input = category == "input"
     local sum, maxs, counts = 0, 0, {}
     local capacity = is_input and max_consumption or max_production
@@ -89,7 +89,9 @@ local function sum_stats(statistic, category, filters)
 
     local function accumulate(quality, values)
         for name, value in pairs(values or {}) do
-            if (not allowed or allowed[name]) and not is_buggy(name) then
+            if (not allowed or allowed[name])
+                and (not qualities or not qualities[name] or qualities[name] == quality)
+                and not is_buggy(name) then
                 local count = statistic_value(statistic, name, category, quality)
                 counts[name] = (counts[name] or 0) + count
                 maxs = maxs + count * capacity(name, quality)
@@ -112,12 +114,12 @@ end
 ---@param statistics table<integer,LuaFlowStatistics>
 ---@param satisfaction table<integer,number>
 ---@param filters string[] | nil
-local function calculate_values(statistics, satisfaction, filters)
+local function calculate_values(statistics, satisfaction, filters, qualities)
     local input, output, maxin, maxout, count = 0, 0, 0, 0, {}
     for electric_network_id, statistic in pairs(statistics) do
         if satisfaction[electric_network_id] then
-             input, maxin , count = add( input, maxin , count, sum_stats(statistic, "input" , filters))
-            output, maxout, count = add(output, maxout, count, sum_stats(statistic, "output", filters))
+             input, maxin , count = add( input, maxin , count, sum_stats(statistic, "input" , filters, qualities))
+            output, maxout, count = add(output, maxout, count, sum_stats(statistic, "output", filters, qualities))
         end
     end
     return input, output, maxin, maxout, count
@@ -126,7 +128,7 @@ end
 ---@param net LuaEntity
 ---@param sat LuaEntity
 ---@param filters string[] | nil
-local function collect_electric_statistics(net, sat, filters)
+local function collect_electric_statistics(net, sat, filters, qualities)
     local statistics, satisfaction = {}, {}
     if net and net.electric_network_id then
         statistics[net.electric_network_id] = net.electric_network_statistics
@@ -142,11 +144,11 @@ local function collect_electric_statistics(net, sat, filters)
                 ratio = sat.energy / sat.electric_buffer_size
             end
             if ratio then
-                return calculate_values({[1] = global_stats}, {[1] = ratio}, filters)
+                return calculate_values({[1] = global_stats}, {[1] = ratio}, filters, qualities)
             end
         end
     end
-    return calculate_values(statistics, satisfaction, filters)
+    return calculate_values(statistics, satisfaction, filters, qualities)
 end
 
 M.collect = collect_electric_statistics
