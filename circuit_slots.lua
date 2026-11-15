@@ -172,7 +172,7 @@ end
 -- A missing cable does not suppress the native display. These output counts
 -- are also tracked as own feedback so switching MANUAL->AUTO cannot interpret
 -- the last manual output as an external filter input.
-function M.write_manual_preview(state, names, counts)
+function M.write_manual_preview(state, names, counts, qualities)
     local control = state.control
     if control.sections_count == 0 then control.add_section() end
     local section = control.sections[1]
@@ -183,7 +183,8 @@ function M.write_manual_preview(state, names, counts)
         if name then
             local count = counts and counts[name] or 0
             preview = {value={name=name, type="item",
-                quality="normal", comparator="="}, min=count}
+                quality=(qualities and qualities[name]) or "normal",
+                comparator="="}, min=count}
         end
         set_signal(control, index, preview)
     end
