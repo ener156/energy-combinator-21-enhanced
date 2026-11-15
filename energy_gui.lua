@@ -45,6 +45,11 @@ local function gui_filter_signatures()
     return storage.energy_gui_filter_signatures
 end
 
+local function gui_overview_signatures()
+    storage.energy_gui_overview_signatures = storage.energy_gui_overview_signatures or {}
+    return storage.energy_gui_overview_signatures
+end
+
 local function mk2_mode_index(value)
     for i, mode in ipairs(MK2_MODES) do
         if mode == value then return i end
@@ -95,6 +100,7 @@ function M.close(player)
     if frame and frame.valid then frame.destroy() end
     gui_context()[player.index] = nil
     gui_filter_signatures()[player.index] = nil
+    gui_overview_signatures()[player.index] = nil
 end
 
 function M.open(player, state)
@@ -129,6 +135,23 @@ function M.open(player, state)
     grid.add{type="label", caption=caption_key("power-output")}
     for _, entry in ipairs(POWER_ROWS) do
         row(grid, entry)
+    end
+    if entity.name:find("MK2", 1, true) then
+        local filter_panel = overview.add{
+            type="frame", direction="vertical",
+            style="inside_shallow_frame_with_padding",
+        }
+        filter_panel.add{type="label", caption=caption_key("overview-filters-title"),
+                         style="heading_2_label"}
+        filter_panel.add{type="label", name="ec_overview_filter_source", caption="—"}
+        filter_panel.add{type="label", name="ec_overview_filter_scope", caption="—"}
+        local scroller = filter_panel.add{
+            type="scroll-pane", name="ec_overview_filter_scroller",
+            direction="vertical",
+        }
+        scroller.style.maximal_height = 180
+        scroller.style.minimal_width = 420
+        scroller.add{type="flow", name="ec_overview_filter_list", direction="vertical"}
     end
     overview.add{type="label", caption=caption_key("rounding-hint")}
 
@@ -227,6 +250,60 @@ local function update_manual_list(player, frame, config)
     end
 end
 
+-- Rebuild only when the effective filter names change. Measured quantities
+-- update on every refresh without rebuilding widgets on every Factorio tick.
+local function update_filter_overview(player, frame, state, config, details)
+    local list = find(frame, "ec_overview_filter_list")
+    if not list then return end
+    local current = details.filter_mode == config.mode
+    local names
+    if config.mode == "manual" then
+        names = mk2_modes.valid_manual_filters(state.entity.unit_number)
+    elseif config.mode == "auto" and current then
+        names = details.filter_names or {}
+    else
+        names = {}
+    end
+    value(frame, "ec_overview_filter_source",
+        {"energy-combinator-gui.overview-filter-source",
+         caption_key("mode-" .. config.mode)})
+    local active = #names > 0 and config.mode ~= "all"
+    local scope = active and caption_key("mk2-effective-filtered")
+        or caption_key("mk2-effective-all")
+    value(frame, "ec_overview_filter_scope",
+        {"energy-combinator-gui.overview-filter-scope", scope})
+
+    local signature = config.mode .. ":" .. table.concat(names, "\n")
+    if gui_overview_signatures()[player.index] ~= signature then
+        list.clear()
+        for i, name in ipairs(names) do
+            local line = list.add{type="flow", direction="horizontal"}
+            local prototype = prototypes.entity[name]
+            line.add{type="label", caption={
+                "", "[entity=" .. name .. "] ",
+                prototype and prototype.localised_name or name,
+            }}
+            line.add{type="empty-widget"}.style.horizontally_stretchable = true
+            line.add{type="label", name="ec_overview_filter_count_" .. i, caption="—"}
+        end
+        if #names == 0 then
+            local reason = config.mode == "auto" and "overview-filter-auto-empty"
+                or config.mode == "manual" and "overview-filter-manual-empty"
+                or "overview-filter-all"
+            list.add{type="label", caption=caption_key(reason)}
+        end
+        gui_overview_signatures()[player.index] = signature
+    end
+    local measured = current and details.connected == true and details.enabled ~= false
+    local counts = measured and details.filter_counts or nil
+    for i, name in ipairs(names) do
+        value(list, "ec_overview_filter_count_" .. i,
+            counts and {"energy-combinator-gui.overview-filter-count",
+                        tostring(counts[name] or 0)}
+                   or caption_key("overview-filter-unavailable"))
+    end
+end
+
 function M.refresh(player, state)
     if not player or not player.valid then return end
     local frame = player.gui.screen[ROOT]
@@ -257,6 +334,7 @@ function M.refresh(player, state)
             selector.selected_index = mk2_mode_index(config.mode)
         end
         update_manual_list(player, frame, config)
+        update_filter_overview(player, frame, state, config, details)
         value(frame, "ec_filter_status", {"energy-combinator-gui.filter-count", details.filter_count or 0})
         local effective = details.filter_active and caption_key("mk2-effective-filtered")
             or caption_key("mk2-effective-all")
