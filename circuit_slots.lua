@@ -76,11 +76,16 @@ function M.initialize(control, is_mk2)
     parameters[DEFAULT_F.index] = default_signal(control, DEFAULT_F)
     parameters[DEFAULT_F.index].index = DEFAULT_F.index
     if is_mk2 then
-        local saved_filter = get_signal(control, IDX)
-        if saved_filter then
-            saved_filter.min = 0
-            saved_filter.index = IDX
-            parameters[IDX] = saved_filter
+        -- Restore ALL native filter slots from a placed blueprint, including
+        -- Factorio-parameterised entity signals. Previously only slot 6 was
+        -- retained, destroying edited parameters in slots 7+ on construction.
+        local section = control.sections[1]
+        for index = IDX, section.filters_count do
+            local saved = section.get_slot(index)
+            if saved and saved.value then
+                saved.index = index
+                parameters[index] = saved
+            end
         end
     end
     if control.sections_count == 0 then control.add_section() end
@@ -163,11 +168,11 @@ function M.write_filter_counts(state, counts, electric_connected)
 end
 
 
--- Informational mirror for filters configured in the dedicated MK2 GUI.
--- Count zero is deliberate: it keeps prototypes visible in the native
--- constant-combinator window without exporting new circuit input signals.
--- Auto feedback remains exclusively owned by write_filter_counts().
-function M.write_manual_preview(state, names)
+-- Manual filtering uses the same measured prototype counts as AUTO.
+-- A missing cable does not suppress the native display. These output counts
+-- are also tracked as own feedback so switching MANUAL->AUTO cannot interpret
+-- the last manual output as an external filter input.
+function M.write_manual_preview(state, names, counts)
     local control = state.control
     if control.sections_count == 0 then control.add_section() end
     local section = control.sections[1]
@@ -176,12 +181,17 @@ function M.write_manual_preview(state, names)
         local name = names[index - IDX + 1]
         local preview
         if name then
+            local count = counts and counts[name] or 0
             preview = {value={name=name, type="item",
-                quality="normal", comparator="="}, min=0}
+                quality="normal", comparator="="}, min=count}
         end
         set_signal(control, index, preview)
     end
-    state.prev_outputs = {}
+    local own = {}
+    for _, name in ipairs(names) do
+        own[name] = counts and counts[name] or 0
+    end
+    state.prev_outputs = own
 end
 
 M.get = get_signal
