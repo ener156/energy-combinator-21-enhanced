@@ -48,8 +48,14 @@ local function max_consumption(name, quality)
 end
 
 local function max_production(name, quality)
-    local  prototype = prototypes.entity[name]
-    return prototype and prototype.get_max_energy_production(quality) or 0
+    local prototype = prototypes.entity[name]
+    if not prototype then return 0 end
+    -- Electric accumulators are stored energy, not installed generation.
+    -- Factorio shows their charge in a separate meter and excludes their
+    -- discharge capacity from the generation bar. Keep actual discharge
+    -- flows and entity counts; only exclude accumulator MAX production.
+    if prototype.type == "accumulator" then return 0 end
+    return prototype.get_max_energy_production(quality) or 0
 end
 
 ---@param statistic LuaFlowStatistics
