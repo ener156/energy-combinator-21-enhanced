@@ -244,13 +244,29 @@ function M.open(player, state)
     local diag_tab = tabs.add{type="tab", caption=caption_key("diagnostics")}
     local diag = tabs.add{type="flow", name="ec_diagnostics", direction="vertical"}
     tabs.add_tab(diag_tab, diag)
-    diag.add{type="label", name="ec_net_status", caption="—"}
-    diag.add{type="label", name="ec_net_id", caption="—"}
-    diag.add{type="label", name="ec_sat_id", caption="—"}
-    diag.add{type="label", name="ec_measurement_mode", caption="—"}
-    diag.add{type="label", name="ec_filter_status", caption="—"}
-    diag.add{type="label", name="ec_filter_mode_status", caption="—"}
-    diag.add{type="label", name="ec_combinator_status", caption="—"}
+    local diag_columns = diag.add{type="flow", name="ec_diagnostics_columns",
+        direction="horizontal"}
+    diag_columns.style.horizontal_spacing = 14
+    local network = diag_columns.add{type="frame", name="ec_diagnostics_network",
+        direction="vertical", style="inside_shallow_frame_with_padding"}
+    network.style.minimal_width = 390
+    network.add{type="label", caption=caption_key("diagnostics-network-title"),
+        style="heading_2_label"}
+    network.add{type="label", name="ec_net_status", caption="—"}
+    network.add{type="label", name="ec_net_id", caption="—"}
+    network.add{type="label", name="ec_sat_id", caption="—"}
+    network.add{type="label", name="ec_combinator_status", caption="—"}
+    local measurement = diag_columns.add{type="frame", name="ec_diagnostics_measurement",
+        direction="vertical", style="inside_shallow_frame_with_padding"}
+    measurement.style.minimal_width = 420
+    measurement.add{type="label", caption=caption_key("diagnostics-measurement-title"),
+        style="heading_2_label"}
+    measurement.add{type="label", name="ec_measurement_mode", caption="—"}
+    measurement.add{type="label", name="ec_filter_status", caption="—"}
+    local mode_status = measurement.add{type="label", name="ec_filter_mode_status",
+        caption="—"}
+    mode_status.style.single_line = false
+    mode_status.style.maximal_width = 395
 
     local footer = frame.add{type="flow", direction="horizontal"}
     footer.add{type="button", name="ec_open_native", caption=caption_key("native")}
