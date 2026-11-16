@@ -393,9 +393,11 @@ local function update_manual_list(player, frame, config)
             label.style.single_line = false
             local selected = (config.qualities and config.qualities[name]) or "all"
             local quality = line.add{type="drop-down", name="ec_mk2_quality_" .. i,
+                tags={ec_building=name},
                 items=quality_labels, selected_index=quality_index(selected, quality_ids)}
             quality.style.width = 145
             line.add{type="button", name="ec_mk2_remove_" .. i,
+                tags={ec_building=name},
                 caption=caption_key("mk2-manual-remove")}
         end
         if #config.filters == 0 then
@@ -579,10 +581,13 @@ function M.handle_click(event, states, apply_factor, open_native)
     if remove_index then
         if state and state.entity and state.entity.valid then
             local config = mk2_modes.get(state.entity.unit_number)
-            if config.mode == 'manual' and config.filters[remove_index] then
-                mk2_modes.remove_filter(state.entity.unit_number, config.filters[remove_index])
-                gui_filter_signatures()[player.index] = nil
-                M.refresh(player, state)
+            -- Two players can edit the same MK2 concurrently. Row indices
+            -- become stale when another player removes/reorders a filter;
+            -- use the immutable entity-name tag of the clicked button.
+            local name = element.tags and element.tags.ec_building
+            if config.mode == 'manual' and name and
+               mk2_modes.remove_filter(state.entity.unit_number, name) then
+                M.refresh_open_players(states)
             end
         end
     elseif name == "ec_close" or name == "ec_close_bottom" then
@@ -621,12 +626,12 @@ function M.handle_selection(event, states)
         local state = states[id]
         if not state.entity or not state.entity.valid then return end
         local config = mk2_modes.get(id)
-        local name = config.mode == "manual" and config.filters[quality_row]
+        local name = config.mode == "manual" and
+            element.tags and element.tags.ec_building
         local choices = quality_options()
         local quality = choices[element.selected_index]
         if name and quality and mk2_modes.set_filter_quality(id, name, quality) then
-            gui_filter_signatures()[player.index] = nil
-            M.refresh(player, state)
+            M.refresh_open_players(states)
         end
         return
     end
@@ -635,7 +640,7 @@ function M.handle_selection(event, states)
         if state.entity and state.entity.valid then
             local mode = MK2_MODES[element.selected_index]
             if mode and mk2_modes.set_mode(state.entity.unit_number, mode) then
-                M.refresh(player, state)
+                M.refresh_open_players(states)
             end
         end
         return
@@ -673,8 +678,7 @@ function M.handle_elem_changed(event, states)
         end
     end
     element.elem_value = nil
-    gui_filter_signatures()[player.index] = nil
-    M.refresh(player, state)
+    M.refresh_open_players(states)
 end
 
 function M.handle_checked(event, states)
