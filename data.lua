@@ -314,29 +314,21 @@ data:extend{
 
 
     -- ECMOD24: battery energy is joules, never electricity generation in watts.
-    -- Reuse bundled graphics for distinctive layered battery signal icons.
+    -- Matching monochrome 64px battery glyphs (same visual style as power signals).
     {   type = "virtual-signal",
         name = "power-accumulator-energy",
         order = "a[power]-n[storage]-a[stored]",
         subgroup = "combinator-signals",
-        icons = {
-            {icon="__base__/graphics/icons/accumulator.png", icon_size=64,
-                tint={r=0.60,g=1.0,b=0.62,a=1}},
-            {icon=common.graphics_path .. "power-production.png", icon_size=64,
-                scale=0.24, shift={12,12}},
-        },
+        icon = common.graphics_path .. "power-accumulator-energy.png",
+        icon_size = 64,
     },
 
     {   type = "virtual-signal",
         name = "power-accumulator-capacity",
         order = "a[power]-n[storage]-b[capacity]",
         subgroup = "combinator-signals",
-        icons = {
-            {icon="__base__/graphics/icons/accumulator.png", icon_size=64,
-                tint={r=0.50,g=0.78,b=1.0,a=1}},
-            {icon=common.graphics_path .. "power-max-production.png", icon_size=64,
-                scale=0.24, shift={12,12}},
-        },
+        icon = common.graphics_path .. "power-accumulator-capacity.png",
+        icon_size = 64,
     },
 
 
