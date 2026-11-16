@@ -265,8 +265,11 @@ function M.open(player, state)
     local factor_field = change.add{type="textfield", name="ec_factor_input",
         text=tostring(get_factor(state)), numeric=true, allow_negative=true}
     factor_field.style.width = 95
+    -- Every player has an independent GUI. Remember the value each
+    -- player's editor originally displayed, not a shared lock or owner.
+    -- A stale save must not silently overwrite another player's change.
     change.add{type="button", name="ec_apply_factor", caption=caption_key("apply-factor"),
-        style="confirm_button"}
+        style="confirm_button", tags={expected_factor=get_factor(state)}}
     local rounding_help = general.add{type="label", caption=caption_key("rounding-mapwide")}
     rounding_help.style.single_line = false
     rounding_help.style.maximal_width = 360
@@ -600,11 +603,27 @@ function M.handle_click(event, states, apply_factor, open_native)
     elseif name == "ec_apply_factor" then
         local frame = player.gui.screen[ROOT]
         local field = frame and find(frame, "ec_factor_input")
+        if not frame or not frame.valid or find(frame, "ec_apply_factor") ~= element then return end
         local factor = field and tonumber(field.text)
         if factor and factor == math.floor(factor) and factor >= -32 and factor <= 32 then
             if state and state.entity and state.entity.valid then
-                apply_factor(state, factor)
-                M.refresh(player, state)
+                local current = get_factor(state)
+                local original = element.tags and element.tags.expected_factor
+                if original ~= current and factor ~= current then
+                    -- Player A saved while player B still has an older form.
+                    -- The first stale click warns without replacing B's text;
+                    -- a second click deliberately confirms the override.
+                    element.tags = {expected_factor=current}
+                    player.print({"energy-combinator-gui.factor-conflict", tostring(current)})
+                    M.refresh(player, state)
+                    return
+                end
+                if factor ~= current and not apply_factor(state, factor) then
+                    player.print(caption_key("factor-apply-failed"))
+                    return
+                end
+                element.tags = {expected_factor=factor}
+                M.refresh_open_players(states)
             end
         else
             player.print(caption_key("factor-invalid"))
