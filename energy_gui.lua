@@ -92,10 +92,19 @@ local function edit_locks()
     return storage.energy_gui_edit_locks
 end
 
+-- An editor can be in our Settings tab OR in Factorio's original
+-- constant-combinator window.  Both must obey the SAME entity lock.
 local function active_editor(index, unit)
     local player = game.get_player(index)
-    if not player or not player.valid or not player.connected or
-       gui_context()[index] ~= unit then return false end
+    if not player or not player.valid or not player.connected then return false end
+    -- LuaPlayer.opened is a union; only entity-GUIs support unit_number.
+    if player.opened_gui_type == defines.gui_type.entity then
+        local opened = player.opened
+        if opened and opened.valid and opened.unit_number == unit then
+            return true
+        end
+    end
+    if gui_context()[index] ~= unit then return false end
     local frame = player.gui.screen[ROOT]
     if not frame or not frame.valid then return false end
     local tabs = find(frame, "ec_tabs")
@@ -119,6 +128,36 @@ local function may_edit(player, unit)
         owner = player.index
     end
     return owner == player.index, owner
+end
+
+-- Called before showing the original GUI (including the shortcut).
+-- An owner's own switch from Settings to vanilla is allowed.
+function M.native_available(player, entity)
+    if not player or not player.valid or not entity or not entity.valid then
+        return false
+    end
+    local owner = edit_owner(entity.unit_number)
+    if owner and owner ~= player.index then
+        local other = game.get_player(owner)
+        player.print({"energy-combinator-gui.edit-locked",
+            other and other.name or tostring(owner)})
+        return false
+    end
+    return true
+end
+
+-- Authoritative claim at on_gui_opened.  A losing vanilla window must be
+-- closed immediately; there is no read-only mode for vanilla signal slots.
+function M.claim_native_editor(player, entity)
+    if not M.native_available(player, entity) then return false end
+    edit_locks()[entity.unit_number] = player.index
+    return true
+end
+
+function M.release_native_editor(index, unit)
+    if unit and edit_locks()[unit] == index then
+        edit_locks()[unit] = nil
+    end
 end
 
 function M.release_player_lock(index)
@@ -719,7 +758,8 @@ function M.handle_click(event, states, apply_factor, open_native)
         M.close(player)
     elseif name == "ec_open_native" then
         if state and state.entity and state.entity.valid then
-            M.close(player)
+            -- open_native checks the common lock before closing this GUI.
+            -- A rejected request retains this player's read-only window.
             open_native(player, state.entity)
         end
     elseif name == "ec_apply_factor" then
