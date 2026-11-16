@@ -130,6 +130,37 @@ local function may_edit(player, unit)
     return owner == player.index, owner
 end
 
+-- A chat print can be hidden by the game's message-display settings.
+-- Present a dismissible per-player notification as well.  Inform BOTH
+-- players about the denied access, but never label the current owner as
+-- the player who made the rejected request.
+local NOTICE = "ec_gui_lock_notice"
+
+local function show_notice(player, message)
+    if not player or not player.valid then return end
+    player.print(message)
+    -- The synthetic non-player caller in isolated QA intentionally has no GUI.
+    if not player.gui or not player.gui.top then return end
+    local root = player.gui.top
+    local existing = root[NOTICE]
+    if existing and existing.valid then existing.destroy() end
+    local frame = root.add{type="frame", name=NOTICE, direction="horizontal"}
+    frame.add{type="label", name="ec_gui_lock_notice_text", caption=message}
+    frame.add{type="sprite-button", name="ec_gui_lock_notice_close",
+        sprite="utility/close", style="frame_action_button"}
+end
+
+local function notify_native_denied(player, owner)
+    local holder = game.get_player(owner)
+    local holder_name = holder and holder.name or tostring(owner)
+    show_notice(player, {"energy-combinator-gui.edit-native-denied",
+        holder_name})
+    if holder and holder.valid and holder.index ~= player.index then
+        show_notice(holder, {"energy-combinator-gui.edit-native-owner-notice",
+            player.name or tostring(player.index)})
+    end
+end
+
 -- Called before showing the original GUI (including the shortcut).
 -- An owner's own switch from Settings to vanilla is allowed.
 function M.native_available(player, entity)
@@ -138,9 +169,7 @@ function M.native_available(player, entity)
     end
     local owner = edit_owner(entity.unit_number)
     if owner and owner ~= player.index then
-        local other = game.get_player(owner)
-        player.print({"energy-combinator-gui.edit-locked",
-            other and other.name or tostring(owner)})
+        notify_native_denied(player, owner)
         return false
     end
     return true
@@ -728,6 +757,15 @@ function M.handle_click(event, states, apply_factor, open_native)
     local element = event.element
     if not element or not element.valid then return end
     local name = element.name
+    if name == "ec_gui_lock_notice_close" then
+        local player = game.get_player(event.player_index)
+        local parent = player and player.gui and player.gui.top and
+            player.gui.top[NOTICE]
+        if parent and parent.valid and element.parent == parent then
+            parent.destroy()
+        end
+        return
+    end
     local remove_index = tonumber(name:match("^ec_mk2_remove_(%d+)$"))
     if name ~= "ec_close" and name ~= "ec_close_bottom"
        and name ~= "ec_open_native" and name ~= "ec_apply_factor"
