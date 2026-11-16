@@ -51,6 +51,8 @@ local function init()
     for _, player in pairs(game.players) do energy_gui.close(player) end
     storage.energy_gui_context = {}
     storage.energy_gui_filter_signatures = {}
+    -- Any GUI session from a prior mod version is invalid after migration.
+    storage.energy_gui_edit_locks = {}
     combinator_state.rebuild({MK1,MK2}, MK, features.filter)
 end
 
@@ -247,6 +249,11 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(event)
     energy_gui.handle_checked(event, storage.state)
 end)
 script.on_event(defines.events.on_gui_closed, energy_gui.on_closed)
+-- A disconnected editor must never retain ownership of the entity.
+script.on_event(defines.events.on_player_left_game, function(event)
+    energy_gui.release_player_lock(event.player_index)
+    energy_gui.refresh_open_players(storage.state)
+end)
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     if event.setting == "energy-combinator-show-alt-units" then
         alt_units.rebuild(storage.state, function(state)
