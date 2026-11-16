@@ -45,6 +45,16 @@ end
 ---@param entity LuaEntity
 function M.allocate(entity, allowed, is_filter)
     if entity and entity.unit_number and allowed[entity.prototype.name] then
+        -- A platform can raise placement and blueprint-related events close
+        -- together. Never replace an already registered, healthy state.
+        local previous = storage.state and storage.state[entity.unit_number]
+        if previous and previous.entity and previous.entity.valid and
+           previous.net and previous.net.valid and
+           previous.sat and previous.sat.valid and
+           previous.control and previous.control.valid then
+            return previous
+        end
+        if previous then M.cleanup(entity.unit_number) end
         local state = new_state(entity, is_filter[entity.name])
         if not state then return end
         storage.state[entity.unit_number] = state
