@@ -78,7 +78,6 @@ function M.write(state, tick, modes, is_mk2)
         }
         state.last_energy = {stored=0, capacity=0}
         circuit_slots.write_power(control, signal.min, 0, 0, 0, 0)
-        circuit_slots.write_storage(control, 0, 0)
         if is_mk2 then
             local configuration = mk2_modes.get(state.entity.unit_number)
             if configuration.mode == 'manual' then
@@ -89,6 +88,7 @@ function M.write(state, tick, modes, is_mk2)
                 circuit_slots.write_filter_counts(state, {}, false)
             end
         end
+        circuit_slots.write_storage(control, 0, 0)
         meter_sensors.set_light(state, false)
         return
     end
@@ -157,14 +157,6 @@ function M.write(state, tick, modes, is_mk2)
     end
     meter_sensors.set_light(state, enabled)
     circuit_slots.write_power(control, signal.min, input_diff, output_diff, maxin, maxout)
-    -- Existing X applies in J per signal point. Storage overflow never
-    -- suppresses the independent four power signals.
-    local stored_signal = power_rounding.round_signal(stored_joules * scale, "nearest")
-    local capacity_signal = power_rounding.round_signal(capacity_joules * scale, "nearest")
-    if not is_int32(stored_signal) or not is_int32(capacity_signal) then
-        stored_signal, capacity_signal = 0, 0
-    end
-    circuit_slots.write_storage(control, stored_signal, capacity_signal)
     if is_mk2 then
         -- Only AUTO with actual external filters generates circuit feedback.
         -- Manual modes must never echo the incoming circuit into filters.
@@ -177,6 +169,15 @@ function M.write(state, tick, modes, is_mk2)
             circuit_slots.write_filter_counts(state, {}, false)
         end
     end
+    -- Write battery signals LAST: place them directly after the active
+    -- MK2 feedback in the same first section, rather than a second group.
+    -- The factor X scales joules; overflow only clears battery outputs.
+    local stored_signal = power_rounding.round_signal(stored_joules * scale, "nearest")
+    local capacity_signal = power_rounding.round_signal(capacity_joules * scale, "nearest")
+    if not is_int32(stored_signal) or not is_int32(capacity_signal) then
+        stored_signal, capacity_signal = 0, 0
+    end
+    circuit_slots.write_storage(control, stored_signal, capacity_signal)
 end
 
 M.rounding_modes = rounding_modes
