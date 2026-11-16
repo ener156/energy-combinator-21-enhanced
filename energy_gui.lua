@@ -85,6 +85,59 @@ local function caption_key(key)
     return {"energy-combinator-gui." .. key}
 end
 
+-- Synced storage owns the exclusive Settings editor for each entity.
+-- Other players may still open and monitor the same combinator.
+local function edit_locks()
+    storage.energy_gui_edit_locks = storage.energy_gui_edit_locks or {}
+    return storage.energy_gui_edit_locks
+end
+
+local function active_editor(index, unit)
+    local player = game.get_player(index)
+    if not player or not player.valid or not player.connected or
+       gui_context()[index] ~= unit then return false end
+    local frame = player.gui.screen[ROOT]
+    if not frame or not frame.valid then return false end
+    local tabs = find(frame, "ec_tabs")
+    return tabs and tabs.valid and tabs.selected_tab_index == 2
+end
+
+local function edit_owner(unit)
+    local owner = edit_locks()[unit]
+    if owner and not active_editor(owner, unit) then
+        edit_locks()[unit] = nil
+        owner = nil
+    end
+    return owner
+end
+
+local function may_edit(player, unit)
+    if not player or not player.valid or not unit then return false, nil end
+    local owner = edit_owner(unit)
+    if not owner and active_editor(player.index, unit) then
+        edit_locks()[unit] = player.index
+        owner = player.index
+    end
+    return owner == player.index, owner
+end
+
+function M.release_player_lock(index)
+    for unit, owner in pairs(edit_locks()) do
+        if owner == index then edit_locks()[unit] = nil end
+    end
+end
+
+local function show_edit_lock(player, unit)
+    local _, owner = may_edit(player, unit)
+    if owner then
+        local other = game.get_player(owner)
+        player.print({"energy-combinator-gui.edit-locked",
+            other and other.name or tostring(owner)})
+    else
+        player.print(caption_key("edit-select-settings"))
+    end
+end
+
 -- Use Factorio's quality prototypes, including qualities added by other mods.
 -- "all" is the default for every existing building filter.
 local function quality_options()
@@ -161,6 +214,7 @@ end
 
 function M.close(player)
     if not player or not player.valid then return end
+    M.release_player_lock(player.index)
     local frame = player.gui.screen[ROOT]
     if frame and frame.valid then frame.destroy() end
     gui_context()[player.index] = nil
@@ -270,6 +324,10 @@ function M.open(player, state)
     -- A stale save must not silently overwrite another player's change.
     change.add{type="button", name="ec_apply_factor", caption=caption_key("apply-factor"),
         style="confirm_button", tags={expected_factor=get_factor(state)}}
+    local lock_status = general.add{type="label", name="ec_edit_lock_status",
+        caption=caption_key("edit-select-settings")}
+    lock_status.style.single_line = false
+    lock_status.style.maximal_width = 370
     local rounding_help = general.add{type="label", caption=caption_key("rounding-mapwide")}
     rounding_help.style.single_line = false
     rounding_help.style.maximal_width = 360
@@ -481,6 +539,60 @@ local function update_filter_overview(player, frame, state, config, details)
     end
 end
 
+local function update_edit_access(player, frame, state)
+    local can_edit, owner = may_edit(player, state.entity.unit_number)
+    local label = find(frame, "ec_edit_lock_status")
+    if label then
+        if can_edit then
+            label.caption = caption_key("edit-own")
+        elseif owner then
+            local other = game.get_player(owner)
+            label.caption = {"energy-combinator-gui.edit-locked",
+                other and other.name or tostring(owner)}
+        else
+            label.caption = caption_key("edit-select-settings")
+        end
+    end
+    local factor = get_factor(state)
+    local field = find(frame, "ec_factor_input")
+    if field then
+        field.enabled = can_edit
+        -- A viewer sees the shared value; an editor's unsaved text survives refresh.
+        if not can_edit and field.text ~= tostring(factor) then
+            field.text = tostring(factor)
+        end
+    end
+    local apply = find(frame, "ec_apply_factor")
+    if apply then
+        apply.enabled = can_edit
+        if not can_edit then apply.tags = {expected_factor=factor} end
+    end
+    local config = state.entity.name:find("MK2", 1, true) and
+        mk2_modes.get(state.entity.unit_number) or nil
+    local mode = find(frame, "ec_mk2_mode")
+    if mode then mode.enabled = can_edit end
+    if config then
+        local list = find(frame, "ec_mk2_filter_list")
+        if list then
+            for i = 1, #config.filters do
+                local quality = find(list, "ec_mk2_quality_" .. i)
+                if quality then quality.enabled = can_edit and config.mode == "manual" end
+                local remove = find(list, "ec_mk2_remove_" .. i)
+                if remove then remove.enabled = can_edit and config.mode == "manual" end
+            end
+        end
+        local add = find(frame, "ec_mk2_add_entity")
+        if add then add.enabled = can_edit and config.mode == "manual"
+            and #config.filters < mk2_modes.max_filters end
+    end
+    for _, item in ipairs(ROUNDING) do
+        local dropdown = find(frame, item.gui)
+        if dropdown then dropdown.enabled = can_edit end
+    end
+    local alt = find(frame, "ec_alt_checkbox")
+    if alt then alt.enabled = can_edit end
+end
+
 function M.refresh(player, state)
     if not player or not player.valid then return end
     local frame = player.gui.screen[ROOT]
@@ -548,6 +660,7 @@ function M.refresh(player, state)
     local checkbox = find(frame, "ec_alt_checkbox")
     if checkbox then checkbox.state = settings.global[ALT_SETTING].value end
     resize_active_tab(player, frame, state)
+    update_edit_access(player, frame, state)
 end
 
 function M.handle_tab_changed(event, states)
@@ -557,7 +670,11 @@ function M.handle_tab_changed(event, states)
     local unit = gui_context()[player.index]
     local state = unit and states[unit]
     if state and state.entity and state.entity.valid then
+        if event.element.selected_tab_index ~= 2 then
+            M.release_player_lock(player.index)
+        end
         resize_active_tab(player, frame, state)
+        M.refresh_open_players(states)
     end
 end
 
@@ -583,6 +700,11 @@ function M.handle_click(event, states, apply_factor, open_native)
     local state = states[unit_number]
     if remove_index then
         if state and state.entity and state.entity.valid then
+            if not may_edit(player, unit_number) then
+                show_edit_lock(player, unit_number)
+                M.refresh_open_players(states)
+                return
+            end
             local config = mk2_modes.get(state.entity.unit_number)
             -- Two players can edit the same MK2 concurrently. Row indices
             -- become stale when another player removes/reorders a filter;
@@ -601,6 +723,11 @@ function M.handle_click(event, states, apply_factor, open_native)
             open_native(player, state.entity)
         end
     elseif name == "ec_apply_factor" then
+        if not may_edit(player, unit_number) then
+            show_edit_lock(player, unit_number)
+            M.refresh_open_players(states)
+            return
+        end
         local frame = player.gui.screen[ROOT]
         local field = frame and find(frame, "ec_factor_input")
         if not frame or not frame.valid or find(frame, "ec_apply_factor") ~= element then return end
@@ -640,6 +767,11 @@ function M.handle_selection(event, states)
     local frame = player and player.gui.screen[ROOT]
     local id = player and gui_context()[player.index]
     if not frame or not frame.valid or not states[id] then return end
+    if not may_edit(player, id) then
+        show_edit_lock(player, id)
+        M.refresh_open_players(states)
+        return
+    end
     local quality_row = tonumber(element.name:match("^ec_mk2_quality_(%d+)$"))
     if quality_row and find(frame, element.name) == element then
         local state = states[id]
@@ -690,6 +822,12 @@ function M.handle_elem_changed(event, states)
     local state = id and states[id]
     if not frame or not frame.valid or not state or
        find(frame, 'ec_mk2_add_entity') ~= element then return end
+    if not may_edit(player, id) then
+        element.elem_value = nil
+        show_edit_lock(player, id)
+        M.refresh_open_players(states)
+        return
+    end
     local config = mk2_modes.get(id)
     if config.mode == 'manual' and element.elem_value then
         if not mk2_modes.add_filter(id, element.elem_value) then
@@ -708,6 +846,11 @@ function M.handle_checked(event, states)
     local id = player and gui_context()[player.index]
     if not frame or not frame.valid or not states[id] then return end
     if find(frame, "ec_alt_checkbox") ~= element then return end
+    if not may_edit(player, id) then
+        show_edit_lock(player, id)
+        M.refresh_open_players(states)
+        return
+    end
     if game.is_multiplayer() and not player.admin then
         player.print(caption_key("requires-admin"))
         M.refresh(player, states[id])
