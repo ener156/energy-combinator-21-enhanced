@@ -69,6 +69,9 @@ local events = {
             defines.events.script_raised_built,
             defines.events.script_raised_revive,
             defines.events.on_robot_built_entity,
+            -- Space Age platforms construct their ghosts themselves, without
+            -- triggering player/robot building events.
+            defines.events.on_space_platform_built_entity,
         },
         removed = {
             defines.events.on_object_destroyed,
@@ -186,6 +189,19 @@ script.on_event(GUI_SHORTCUT, function(event)
     open_native_gui(player, entity)
 end)
 
+-- A pre-existing platform combinator may lack state if it was built before
+-- the platform-specific build event was registered. Repair it on demand.
+local function state_for_gui(entity)
+    local state = storage.state and storage.state[entity.unit_number]
+    if state and state.entity and state.entity.valid and
+        state.control and state.control.valid then
+        return state
+    end
+    if state then combinator_state.cleanup(entity.unit_number) end
+    combinator_state.allocate(entity, MK, features.filter)
+    return storage.state and storage.state[entity.unit_number]
+end
+
 script.on_event(defines.events.on_gui_opened, function(event)
     local player = game.get_player(event.player_index)
     local entity = event.entity
@@ -196,9 +212,16 @@ script.on_event(defines.events.on_gui_opened, function(event)
     if request and request.unit_number == entity.unit_number and request.tick == event.tick then
         return -- opened intentionally with the shortcut
     end
-    -- Suppress only the vanilla constant-combinator window for normal clicks.
+
+    local state = state_for_gui(entity)
+    if not state then
+        -- An unusual surface can reject a hidden sensor. In that case do
+        -- not erase the native combinator GUI and leave the player stuck.
+        return
+    end
+    -- Close this player's native window only; never affect another viewer.
     player.opened = nil
-    energy_gui.open(player, storage.state[entity.unit_number])
+    energy_gui.open(player, state)
 end)
 
 -- Only circuit_slots.lua writes scaling factor in the native circuit section.
