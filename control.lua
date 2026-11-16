@@ -226,9 +226,9 @@ end)
 
 -- Only circuit_slots.lua writes scaling factor in the native circuit section.
 local function apply_gui_factor(state, factor)
-    if circuit_slots.apply_factor(state.control, factor) then
-        alt_units.sync(state, factor)
-    end
+    if not circuit_slots.apply_factor(state.control, factor) then return false end
+    alt_units.sync(state, factor)
+    return true
 end
 
 script.on_event(defines.events.on_gui_click, function(event)
