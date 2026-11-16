@@ -156,7 +156,13 @@ function M.write_storage(control, stored_joules, capacity_joules)
     local section = control.sections[1]
     -- Append after feedback rather than reserving slots 38/39, which would
     -- leave 32 empty slots in MK1 or a lightly filtered MK2.
-    local first = math.max(IDX, section.filters_count + 1)
+    -- MK2 reserves slot 6 as the first feedback slot. When the circuit
+    -- cable is removed, that slot must remain empty (legacy contract).
+    -- Place storage at 7+ in the unfiltered case; active feedback uses 6+.
+    local is_mk2 = control.entity and
+        control.entity.name:find("MK2", 1, true) ~= nil
+    local first = math.max(is_mk2 and IDX + 1 or IDX,
+        section.filters_count + 1)
     section.set_slot(first, {value=STORAGE_ENERGY, min=stored_joules})
     section.set_slot(first + 1, {value=STORAGE_CAPACITY, min=capacity_joules})
     return true
