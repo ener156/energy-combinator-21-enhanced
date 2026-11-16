@@ -175,11 +175,14 @@ script.on_event(defines.events.on_blueprint_settings_pasted, function(event)
     end
 end)
 
--- Hover over a combinator and press the configurable shortcut to open its vanilla GUI.
--- Normal clicks still use the original signal-driven behavior.
+-- The original Factorio editor has no read-only state. Deny its opening
+-- when another player owns this combinator's Settings lock.
 local function open_native_gui(player, entity)
+    if not energy_gui.native_available(player, entity) then return false end
+    energy_gui.close(player) -- release this player's custom Settings editor
     gui_open_requests[player.index] = {unit_number = entity.unit_number, tick = game.tick}
     player.opened = entity
+    return true
 end
 
 script.on_event(GUI_SHORTCUT, function(event)
@@ -187,7 +190,6 @@ script.on_event(GUI_SHORTCUT, function(event)
     if not player then return end
     local entity = player.selected
     if not (is_valid(entity) and MK[entity.name]) then return end
-    energy_gui.close(player)
     open_native_gui(player, entity)
 end)
 
@@ -212,7 +214,15 @@ script.on_event(defines.events.on_gui_opened, function(event)
     local request = gui_open_requests[event.player_index]
     gui_open_requests[event.player_index] = nil
     if request and request.unit_number == entity.unit_number and request.tick == event.tick then
-        return -- opened intentionally with the shortcut
+        if not energy_gui.claim_native_editor(player, entity) then
+            -- Vanilla signal slots cannot be disabled individually; close
+            -- this player's original menu, preserving the other editor.
+            player.opened = nil
+            local state = state_for_gui(entity)
+            if state then energy_gui.open(player, state) end
+        end
+        energy_gui.refresh_open_players(storage.state)
+        return
     end
 
     local state = state_for_gui(entity)
@@ -248,7 +258,15 @@ end)
 script.on_event(defines.events.on_gui_checked_state_changed, function(event)
     energy_gui.handle_checked(event, storage.state)
 end)
-script.on_event(defines.events.on_gui_closed, energy_gui.on_closed)
+script.on_event(defines.events.on_gui_closed, function(event)
+    energy_gui.on_closed(event)
+    if event.gui_type == defines.gui_type.entity and
+        event.entity and event.entity.valid and MK[event.entity.name] then
+        energy_gui.release_native_editor(event.player_index,
+            event.entity.unit_number)
+        energy_gui.refresh_open_players(storage.state)
+    end
+end)
 -- A disconnected editor must never retain ownership of the entity.
 script.on_event(defines.events.on_player_left_game, function(event)
     energy_gui.release_player_lock(event.player_index)
