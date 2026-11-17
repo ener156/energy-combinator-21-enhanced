@@ -231,8 +231,11 @@ script.on_event(defines.events.on_gui_opened, function(event)
         -- not erase the native combinator GUI and leave the player stuck.
         return
     end
-    -- Close this player's native window only; never affect another viewer.
-    player.opened = nil
+    -- Hand off directly to the enhanced frame. M.open sets player.opened
+    -- to that frame, closing the built-in GUI in one transition rather than
+    -- first setting opened=nil (an additional visible close/open step).
+    -- A remote multiplayer client can still show its native GUI before
+    -- the synchronized on_gui_opened event reaches this handler.
     energy_gui.open(player, state)
 end)
 
