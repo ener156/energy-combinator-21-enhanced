@@ -2,19 +2,55 @@
 Version: 1.3.0
 Date: 17.11.2026
   Features:
-    - Added Overview, Settings and Diagnostics tabs with live power measurements.
-    - Expanded MK2 with automatic circuit filters, full-network mode, and
-      saved manual building filters with optional quality selection.
+    - Added a new Overview, Settings and Diagnostics interface with live power
+      measurements, configurable rounding and detailed network information.
+    - Expanded MK2 with automatic circuit filters, full-network mode and
+      saved manual building filters, including optional quality selection.
     - Added circuit signals for stored accumulator energy and total storage
-      capacity, measured in joules.
+      capacity, expressed in joules.
   Changes:
-    - Added a shared multiplayer edit lock for the enhanced settings and the
+    - Added a shared multiplayer editing lock for the enhanced settings and
       original combinator interface. Other players can still view measurements.
     - Added 7 Segment Digits as an optional recommended companion mod.
   Bugfixes:
-    - Fixed GUI opening on space platforms and improved multiplayer GUI handling.
-    - Corrected power estimates for quality-aware buildings and accumulators.
-    - Improved rounding, filter switching and electric-network change handling.
+    - Fixed GUI opening on Space Age platforms and improved multiplayer
+      interface handling.
+    - Improved power calculations for quality-aware buildings and accumulators.
+    - Fixed rounding edge cases, MK2 filter-switch spikes and electric-network
+      transition handling.
+---------------------------------------------------------------------------------------------------
+Version: 1.2.5
+Date: 08.11.2026
+  Bugfixes:
+    - Round estimated maximum production downward after applying scaling, so the circuit signal never overstates the estimated production capacity.
+    - Keep maximum consumption rounded upward and current measurements rounded to the nearest integer.
+  Improvements:
+    - Tier 1 combinators on ordinary local electric networks now read current consumption and production from the last electric network tick.
+    - Current power signals follow load changes more accurately, reducing lag after consumers are added or removed.
+  Compatibility:
+    - The maximum-consumption estimate, Tier 2 entity filters and experimental global electric networks retain their existing calculations.
+    - Space-platform and multiplayer compatibility remain experimental.
+    - The configured output update interval is unchanged.
+---------------------------------------------------------------------------------------------------
+Version: 1.2.4
+Date: 08.11.2026
+  Bugfixes:
+    - Current consumption and production signals now round to the nearest integer instead of always rounding up.
+    - Maximum consumption and production estimates keep their previous upward rounding.
+  Improvements:
+    - Explained scaling factor X with a 0–6 unit table, formula and example in signal tooltips and Tips & Tricks (DE/EN/RU).
+    - Renamed the scaling signal's display text for clarity; its prototype ID is unchanged.
+---------------------------------------------------------------------------------------------------
+Version: 1.2.3
+Date: 08.11.2026
+  Bugfixes:
+    - Corrected the current consumption signal during power shortages so it shows actual consumption instead of inflated demand.
+---------------------------------------------------------------------------------------------------
+Version: 1.2.2
+Date: 08.11.2026
+  Features:
+    - Hover over an Energy Combinator and press Ctrl + Shift + E to open its settings.
+    - The shortcut can be changed under Settings > Controls > Mods.
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 08.11.2026
