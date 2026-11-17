@@ -130,10 +130,9 @@ local function may_edit(player, unit)
     return owner == player.index, owner
 end
 
--- A chat print can be hidden by the game's message-display settings.
--- Present a dismissible per-player notification as well.  Inform BOTH
--- players about the denied access, but never label the current owner as
--- the player who made the rejected request.
+-- A chat print can be hidden by the player's message-display settings.
+-- Only the player whose attempt was denied needs a visible notification,
+-- whether that player hosts the session or joined another player's server.
 local NOTICE = "ec_gui_lock_notice"
 
 local function show_notice(player, message)
@@ -153,12 +152,10 @@ end
 local function notify_native_denied(player, owner)
     local holder = game.get_player(owner)
     local holder_name = holder and holder.name or tostring(owner)
+    -- The requester is event.player_index. Never send this rejection to
+    -- the lock owner instead of the player who attempted to enter.
     show_notice(player, {"energy-combinator-gui.edit-native-denied",
         holder_name})
-    if holder and holder.valid and holder.index ~= player.index then
-        show_notice(holder, {"energy-combinator-gui.edit-native-owner-notice",
-            player.name or tostring(player.index)})
-    end
 end
 
 -- Called before showing the original GUI (including the shortcut).
