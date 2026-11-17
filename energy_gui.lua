@@ -774,10 +774,28 @@ function M.handle_click(event, states, apply_factor, open_native)
     elseif name == "ec_close" or name == "ec_close_bottom" then
         M.close(player)
     elseif name == "ec_open_native" then
+        -- Check the lock at the GUI button itself. In particular, a host
+        -- viewing another player's Settings must get a chat rejection from
+        -- THIS click, before any attempt to switch to the native editor.
+        -- The native_available guard remains authoritative for shortcuts
+        -- and for late changes between button and native GUI opening.
         if state and state.entity and state.entity.valid then
-            -- open_native checks the common lock before closing this GUI.
-            -- A rejected request retains this player's read-only window.
+            local owner = edit_owner(unit_number)
+            if owner and owner ~= player.index then
+                log("ECMOD33_DENIED_NATIVE_CLICK|requester=" ..
+                    tostring(player.index) .. "|owner=" .. tostring(owner) ..
+                    "|unit=" .. tostring(unit_number))
+                notify_native_denied(player, owner)
+                return
+            end
             open_native(player, state.entity)
+        else
+            log("ECMOD33_NATIVE_CLICK_MISSING_STATE|requester=" ..
+                tostring(player.index) .. "|unit=" .. tostring(unit_number))
+            player.print(caption_key("edit-select-settings"), {
+                skip=defines.print_skip.never,
+                sound=defines.print_sound.always,
+            })
         end
     elseif name == "ec_apply_factor" then
         if not may_edit(player, unit_number) then
