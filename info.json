@@ -1,6 +1,6 @@
 {
   "name": "energy-combinator-21-enhanced",
-  "version": "1.2.14",
+  "version": "1.3.0",
   "title": "Energy Combinator 2.1 Enhanced",
   "author": "ener156 (fork of VinDust / dodo.the.last)",
   "factorio_version": "2.1",
@@ -10,6 +10,7 @@
     "! energy-combinator",
     "! energy-combinator-2",
     "! capacity-combinator",
-    "! power-combinator"
+    "! power-combinator",
+    "+ 7seg"
   ]
 }
