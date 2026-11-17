@@ -363,9 +363,13 @@ function M.open(player, state)
     setting_flow.visible = false
     local columns = setting_flow.add{type="flow", name="ec_settings_columns", direction="horizontal"}
     columns.style.horizontal_spacing = 14
+    -- Match the card edges even when the MK2 mode panel is much shorter
+    -- than the general controls (Auto/All modes). Previously the right
+    -- card ended early and left a large unframed blank area below it.
     local general = columns.add{type="frame", name="ec_general_panel", direction="vertical",
         style="inside_shallow_frame_with_padding"}
     general.style.minimal_width = 390
+    general.style.vertically_stretchable = true
     general.add{type="label", caption=caption_key("settings-general-title"),
         style="heading_2_label"}
     local factor_help = general.add{type="label", caption=caption_key("factor-help")}
@@ -411,6 +415,7 @@ function M.open(player, state)
         local filters = columns.add{type="frame", name="ec_filter_settings_panel", direction="vertical",
             style="inside_shallow_frame_with_padding"}
         filters.style.minimal_width = 490
+        filters.style.vertically_stretchable = true
         filters.add{type="label", caption=caption_key("mk2-mode-title"),
             style="heading_2_label"}
         local selector = filters.add{type="drop-down", name="ec_mk2_mode",
