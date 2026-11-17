@@ -288,7 +288,10 @@ function M.open(player, state)
     }
     frame.auto_center = true
     frame.style.minimal_width = 880
-    frame.style.maximal_width = 940
+    -- The German MK2 Settings controls are wider than the Overview page.
+    -- Allow enough frame width for the Settings content AND its right inset;
+    -- otherwise the last card touches (or crosses) the outer frame border.
+    frame.style.maximal_width = 980
     local header = frame.add{type="flow", direction="horizontal"}
     header.add{type="label", caption=entity.name:find("MK2", 1, true) and caption_key("mk2") or caption_key("mk1")}
     header.add{type="empty-widget", style="draggable_space"}.style.horizontally_stretchable = true
@@ -360,6 +363,10 @@ function M.open(player, state)
     local settings_tab = tabs.add{type="tab", caption=caption_key("settings")}
     tabs.add_tab(settings_tab, tabs.add{type="empty-widget"})
     local setting_flow = frame.add{type="flow", name="ec_settings", direction="vertical"}
+    -- Give the Settings page the same visible outer-right breathing room
+    -- as the Overview page, including Auto/All where the filter card is short.
+    -- This is a horizontal inset, separate from the equal-height card fix.
+    setting_flow.style.right_padding = 16
     setting_flow.visible = false
     local columns = setting_flow.add{type="flow", name="ec_settings_columns", direction="horizontal"}
     columns.style.horizontal_spacing = 14
