@@ -1,4 +1,26 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.3.0
+Date: 17.11.2026
+  Features:
+    - New Overview, Settings and Diagnostics interface with scaling, rounding
+      and electric-network measurements.
+    - Three MK2 measuring modes: automatic circuit filters, entire grid, and
+      saved manual building filters with optional quality selection.
+    - New circuit signals for stored accumulator energy and total storage
+      capacity, using the selected scaling factor.
+    - Improved support for quality-aware energy statistics and space platforms.
+  Changes:
+    - Only one player may edit a combinator's settings at a time; other
+      players can still view live measurements. The original combinator
+      interface shares the same edit lock.
+    - Recommend 7 Segment Digits as an optional companion mod; not required.
+  Bugfixes:
+    - Prevent incorrect power spikes after changing MK2 filters or reconnecting
+      electric networks; update measurements for enabled buildings.
+    - Improve power limits, signal rounding and storage calculations.
+    - Improve GUI layout and error messages for multiplayer users.
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 1.2.14
 Date: 14.11.2026
   Bugfixes:
