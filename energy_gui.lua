@@ -130,32 +130,19 @@ local function may_edit(player, unit)
     return owner == player.index, owner
 end
 
--- A chat print can be hidden by the player's message-display settings.
--- Only the player whose attempt was denied needs a visible notification,
--- whether that player hosts the session or joined another player's server.
-local NOTICE = "ec_gui_lock_notice"
-
-local function show_notice(player, message)
-    if not player or not player.valid then return end
-    player.print(message)
-    -- The synthetic non-player caller in isolated QA intentionally has no GUI.
-    if not player.gui or not player.gui.top then return end
-    local root = player.gui.top
-    local existing = root[NOTICE]
-    if existing and existing.valid then existing.destroy() end
-    local frame = root.add{type="frame", name=NOTICE, direction="horizontal"}
-    frame.add{type="label", name="ec_gui_lock_notice_text", caption=message}
-    frame.add{type="sprite-button", name="ec_gui_lock_notice_close",
-        sprite="utility/close", style="frame_action_button"}
-end
-
+-- Report a denied native-editor attempt only to the requesting player.
+-- Never create a top-of-screen GUI notice. Bypass Factorio's automatic
+-- suppression of repeated chat messages and play a local notification sound
+-- so the same rejection is noticeable on host and joined clients.
 local function notify_native_denied(player, owner)
+    if not player or not player.valid then return end
     local holder = game.get_player(owner)
     local holder_name = holder and holder.name or tostring(owner)
-    -- The requester is event.player_index. Never send this rejection to
-    -- the lock owner instead of the player who attempted to enter.
-    show_notice(player, {"energy-combinator-gui.edit-native-denied",
-        holder_name})
+    player.print({"energy-combinator-gui.edit-native-denied", holder_name}, {
+        skip = defines.print_skip.never,
+        sound = defines.print_sound.always,
+        color = {r = 1, g = 0.75, b = 0.35},
+    })
 end
 
 -- Called before showing the original GUI (including the shortcut).
@@ -279,6 +266,10 @@ end
 
 function M.close(player)
     if not player or not player.valid then return end
+    -- Migration from ECMOD30/31: remove a notice that may still be saved
+    -- in the player's top GUI; subsequent denied actions use chat only.
+    local old_notice = player.gui.top["ec_gui_lock_notice"]
+    if old_notice and old_notice.valid then old_notice.destroy() end
     M.release_player_lock(player.index)
     local frame = player.gui.screen[ROOT]
     if frame and frame.valid then frame.destroy() end
@@ -754,15 +745,6 @@ function M.handle_click(event, states, apply_factor, open_native)
     local element = event.element
     if not element or not element.valid then return end
     local name = element.name
-    if name == "ec_gui_lock_notice_close" then
-        local player = game.get_player(event.player_index)
-        local parent = player and player.gui and player.gui.top and
-            player.gui.top[NOTICE]
-        if parent and parent.valid and element.parent == parent then
-            parent.destroy()
-        end
-        return
-    end
     local remove_index = tonumber(name:match("^ec_mk2_remove_(%d+)$"))
     if name ~= "ec_close" and name ~= "ec_close_bottom"
        and name ~= "ec_open_native" and name ~= "ec_apply_factor"
